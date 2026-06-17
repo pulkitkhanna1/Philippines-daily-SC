@@ -216,8 +216,46 @@
       margin-left: 4px;
     }
 
-    .meets { background: #dff1e2 !important; }
-    .miss  { background: #f8dfe3 !important; }
+    .meets { background: #dff1e2 !important; color: #1e4620 !important; }
+    .miss  { background: #f8dfe3 !important; color: #721c24 !important; }
+    .warning { background: #fff3cd !important; color: #856404 !important; }
+
+    .status-uploaded {
+      background: #dff1e2;
+      color: #1e4620;
+      border: 1px solid #c3e6cb;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-weight: 700;
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .status-to-be {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-weight: 700;
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .status-hold {
+      background: #e2e3e5;
+      color: #383d41;
+      border: 1px solid #d6d8db;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-weight: 700;
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
 
     .status-bar {
       font-size: 12px;
@@ -439,46 +477,55 @@ const STORE_KEY = 'bfu_admin_v1';
 // Fallback hardcoded values (by column letter) used if label matching fails.
 let C = {
   METRIC:      0,
+  SHOW:        1,
   ANGLE:       2,
-  DATE:        37,
-  TESTING_CPI: 14,
-  CPI:         40,
-  INSTALLS:    36,
-  SPENT:       17,
-  CTR:         21,
-  CTI:         22,
-  ACT_D0:      41,
-  ACT_D3:      42,
+  OWNER:       3,
+  UPLOAD_DATE: 43,
+  STATUS:      10,
+  USA_CPI:     14,
+  USA_CI:      16,
+  USA_SPENT:   17,
+  USA_V25:     18,
+  USA_OCC:     24,
+  PH_CPI:      40,
+  PH_D0:       41,
+  PH_D3:       42,
 };
 
 // Column-letter → semantic key (used as fallback when labels are empty)
 const LETTER_TO_KEY = {
   A: 'METRIC',
+  B: 'SHOW',
   C: 'ANGLE',
-  AL: 'DATE',
-  O: 'TESTING_CPI',
-  AO: 'CPI',
-  AK: 'INSTALLS',
-  R: 'SPENT',
-  V: 'CTR',
-  W: 'CTI',
-  AP: 'ACT_D0',
-  AQ: 'ACT_D3'
+  D: 'OWNER',
+  AR: 'UPLOAD_DATE',
+  K: 'STATUS',
+  O: 'USA_CPI',
+  Q: 'USA_CI',
+  R: 'USA_SPENT',
+  S: 'USA_V25',
+  Y: 'USA_OCC',
+  AO: 'PH_CPI',
+  AP: 'PH_D0',
+  AQ: 'PH_D3',
 };
 
 // Label patterns — matched against GViz column labels (case-insensitive)
 const LABEL_RULES = [
-  { key: 'METRIC',      test: s => /metrics|asset.?code|ga\s*\/\s*gi\s*code/i.test(s) },
-  { key: 'ANGLE',       test: s => /\bangle\b/i.test(s) },
-  { key: 'DATE',        test: s => /start.?date|upload.?date/i.test(s) },
-  { key: 'TESTING_CPI', test: s => /testing.?cpi|cost\s*per\s*app\s*install/i.test(s) },
-  { key: 'CPI',         test: s => /cpi\s*on\s*cps|cps\s*results.*ph\s*cpi/i.test(s) },
-  { key: 'INSTALLS',    test: s => /^installs$|app\s*installs/i.test(s.trim()) },
-  { key: 'SPENT',       test: s => /amount.?spent/i.test(s) },
-  { key: 'CTR',         test: s => /ctr\s*\(link/i.test(s) },
-  { key: 'CTI',         test: s => /click\s*to\s*install/i.test(s) },
-  { key: 'ACT_D0',      test: s => /\bd0\b/i.test(s) },
-  { key: 'ACT_D3',      test: s => /activation.*\bd3\b|\bd3\b.*activation/i.test(s) },
+  { key: 'METRIC',      test: s => /ga\s*\/\s*gi\s*code/i.test(s) },
+  { key: 'SHOW',        test: s => /^show$/i.test(s.trim()) },
+  { key: 'ANGLE',       test: s => /^angle$/i.test(s.trim()) },
+  { key: 'OWNER',       test: s => /^owner$/i.test(s.trim()) },
+  { key: 'UPLOAD_DATE', test: s => /philippines\s*upload|upload\s*date/i.test(s) },
+  { key: 'STATUS',      test: s => /^status$/i.test(s.trim()) },
+  { key: 'USA_CPI',     test: s => /usa\s*cost\s*per\s*app|cost\s*per\s*app\s*install\s*\(usd\)/i.test(s) },
+  { key: 'USA_CI',      test: s => /completions\/\s*impressions/i.test(s) },
+  { key: 'USA_SPENT',   test: s => /amount\s*spent\s*\(usd\)/i.test(s) },
+  { key: 'USA_V25',     test: s => /video\s*-\s*0%\s*-\s*25%/i.test(s) },
+  { key: 'USA_OCC',     test: s => /outbound\s*clicks\s*to\s*completion/i.test(s) },
+  { key: 'PH_CPI',      test: s => /ph\s*cpi|cps\s*results\s*-\s*ph\s*cpi/i.test(s) },
+  { key: 'PH_D0',       test: s => /d0\s*activation/i.test(s) },
+  { key: 'PH_D3',       test: s => /d3\s*activation/i.test(s) },
 ];
 
 function buildC(cols) {
@@ -551,15 +598,18 @@ function setManualPromos(v) { const s = getStore(); s.manualPromos = v; saveStor
 function manualToPromo(m) {
   const pct = v => v !== '' && v != null ? v + '%' : '';
   const d = [];
-  d[C.DATE]        = m.date        || '';
-  d[C.TESTING_CPI] = m.testingCpi  ? '$' + m.testingCpi  : '';
-  d[C.CPI]         = m.cpi         ? '$' + m.cpi         : '';
-  d[C.INSTALLS]    = m.installs    || '';
-  d[C.SPENT]       = m.spent       ? '$' + m.spent       : '';
-  d[C.CTR]         = pct(m.ctr);
-  d[C.CTI]         = pct(m.cti);
-  d[C.ACT_D0]      = pct(m.actD0);
-  d[C.ACT_D3]      = pct(m.actD3);
+  d[C.UPLOAD_DATE] = m.date        || '';
+  d[C.SHOW]        = m.show        || '';
+  d[C.OWNER]       = m.owner       || '';
+  d[C.STATUS]      = m.status      || 'Uploaded';
+  d[C.USA_CPI]     = m.testingCpi  ? '$' + m.testingCpi  : '';
+  d[C.USA_CI]      = pct(m.ci);
+  d[C.USA_SPENT]   = m.spent       ? '$' + m.spent       : '';
+  d[C.USA_V25]     = pct(m.v25);
+  d[C.USA_OCC]     = pct(m.occ);
+  d[C.PH_CPI]      = m.cpi         ? '$' + m.cpi         : '';
+  d[C.PH_D0]       = pct(m.actD0);
+  d[C.PH_D3]       = pct(m.actD3);
   return { angle: m.angle, assetCode: m.assetCode, data: d, bench: [], _manual: true, _id: m.id, _bucket: m.bucket };
 }
 
@@ -599,13 +649,16 @@ function saveManualPromo(e) {
     bucket:      _modalBucket,
     angle:       g('pf-angle'),
     assetCode:   g('pf-code'),
+    show:        g('pf-show'),
+    owner:       g('pf-owner'),
     date:        g('pf-date'),
+    status:      g('pf-status'),
     testingCpi:  g('pf-testing-cpi'),
-    cpi:         g('pf-cpi'),
-    installs:    g('pf-installs'),
+    ci:          g('pf-ci'),
     spent:       g('pf-spent'),
-    ctr:         g('pf-ctr'),
-    cti:         g('pf-cti'),
+    v25:         g('pf-v25'),
+    occ:         g('pf-occ'),
+    cpi:         g('pf-cpi'),
     actD0:       g('pf-actd0'),
     actD3:       g('pf-actd3'),
   });
@@ -740,7 +793,7 @@ function daysSinceStart(dateStr) {
 function categorize(promos) {
   const d7 = [], d3 = [], d0 = [];
   for (const p of promos) {
-    const days = daysSinceStart(p.data[C.DATE]);
+    const days = daysSinceStart(p.data[C.UPLOAD_DATE]);
     if (days !== null && days > 12) d7.push(p);
     else if (days !== null && days >= 3) d3.push(p);
     else d0.push(p);
@@ -932,28 +985,106 @@ function escHtml(s) {
   return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function d7Rows(promoList, cls = '', hideScope = 'default', moveTarget = '') {
-  let out = '';
-  const dataCls  = cls ? 'hidden-data'  : 'data-row';
-  for (const p of promoList) {
-    const d = p.data;
-    out += `
-      <tr class="${dataCls}">
-        <td class="left">${escHtml(p.angle)}</td>
-        <td>${escHtml(p.assetCode)}</td>
-        <td>${fmt(d[C.DATE])}</td>
-        <td>${fmt(d[C.TESTING_CPI])}</td>
-        <td>${fmt(d[C.CPI])}</td>
-        <td>${fmt(d[C.INSTALLS])}</td>
-        <td>${fmt(d[C.SPENT])}</td>
-        <td>${fmt(d[C.CTR])}</td>
-        <td>${fmt(d[C.CTI])}</td>
-        ${cellT(d[C.ACT_D0], 0.23)}
-        <td>${fmt(d[C.ACT_D3])}</td>
-        ${actionCell(p, 1, hideScope, moveTarget)}
-      </tr>`;
+function usaCpiClass(valStr) {
+  const v = parseVal(valStr);
+  if (v === null) return '';
+  if (v < 6.0) return 'meets'; // Green
+  if (v >= 10.0) return 'miss'; // Red
+  return 'warning'; // Yellow/Orange
+}
+
+function cellTClass(val, threshold, inverse = false) {
+  const v = parseVal(val);
+  if (v === null) return '';
+  const isMeets = inverse ? v <= threshold : v >= threshold;
+  return isMeets ? 'meets' : 'miss';
+}
+
+function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '') {
+  const d = p.data;
+  
+  const cpiClass = usaCpiClass(d[C.USA_CPI]);
+  const ciClass = cellTClass(d[C.USA_CI], 0.018);
+  const spentClass = cellTClass(d[C.USA_SPENT], 200.0);
+  const v25Class = cellTClass(d[C.USA_V25], 0.10);
+  
+  const statusStr = (d[C.STATUS] || '').trim();
+  let statusHtml = fmt(statusStr);
+  if (statusStr.toLowerCase() === 'uploaded') {
+    statusHtml = `<span class="status-uploaded">Uploaded</span>`;
+  } else if (statusStr.toLowerCase() === 'to be uploaded') {
+    statusHtml = `<span class="status-to-be">To be Uploaded</span>`;
+  } else if (statusStr.toLowerCase() === 'hold') {
+    statusHtml = `<span class="status-hold">Hold</span>`;
   }
-  return out;
+  
+  const isHid = getHidden(hideScope).includes(p.assetCode);
+  const delBtn = adminMode && p._manual
+    ? `<button class="btn-sm hide-btn" onclick="deleteManualPromo('${esc(p._id)}','${p._bucket}')">Del</button>`
+    : '';
+  const adminCtrl = adminMode
+    ? `<div style="display:flex;gap:4px;margin-bottom:3px">
+        <button class="btn-sm ${isHid ? 'show-btn' : 'hide-btn'}" onclick="toggleHide('${esc(p.assetCode)}','${hideScope}')">${isHid ? 'Show' : 'Hide'}</button>
+        ${delBtn}
+       </div>`
+    : '';
+  
+  const dataCls = cls ? 'hidden-data' : 'data-row';
+  return `
+    <tr class="${dataCls}">
+      <td>${escHtml(p.assetCode)}</td>
+      <td class="left">${escHtml(d[C.SHOW] || '')}</td>
+      <td class="left">${escHtml(p.angle)}</td>
+      <td>${escHtml(d[C.OWNER] || '')}</td>
+      <td>${fmt(d[C.UPLOAD_DATE])}</td>
+      <td>${statusHtml}</td>
+      <td class="${cpiClass}">${fmt(d[C.USA_CPI])}</td>
+      <td class="${ciClass}">${fmt(d[C.USA_CI])}</td>
+      <td class="${spentClass}">${fmt(d[C.USA_SPENT])}</td>
+      <td class="${v25Class}">${fmt(d[C.USA_V25])}</td>
+      <td>${fmt(d[C.USA_OCC])}</td>
+      <td>${fmt(d[C.PH_CPI])}</td>
+      <td>${fmt(d[C.PH_D0])}</td>
+      <td>${fmt(d[C.PH_D3])}</td>
+      ${hideScope === 'default' ? 
+        `<td class="action-cell left">${adminCtrl}${adminMode
+          ? `<textarea class="action-textarea" oninput="saveActionInline('${esc(p.assetCode)}',this.value)">${escHtml(getAction(p.assetCode))}</textarea>`
+          : escHtml(getAction(p.assetCode)).replace(/\\n|\n/g,'<br>')
+        }</td>` : actionCell(p, 1, hideScope, moveTarget)
+      }
+    </tr>`;
+}
+
+function tableHeaderHtml(dateLabel = 'Start Date') {
+  return `
+    <thead>
+      <tr>
+        <th rowspan="2">GA / GI Code</th>
+        <th rowspan="2">Show</th>
+        <th rowspan="2">Angle</th>
+        <th rowspan="2">Owner</th>
+        <th rowspan="2">${dateLabel}</th>
+        <th rowspan="2">Status</th>
+        <th colspan="3">GA Code Metrics - USA</th>
+        <th colspan="2">Expand Metrics button</th>
+        <th colspan="3">CPS Results - PH</th>
+        <th rowspan="2" class="action-cell">Action</th>
+      </tr>
+      <tr class="sub">
+        <th>Cost per App Install (USD)</th>
+        <th>Completions/ Impressions</th>
+        <th>Amount spent (USD)</th>
+        <th>Video - 0% - 25%</th>
+        <th>Outbound Clicks to Completion</th>
+        <th>CPI</th>
+        <th>D0 Activation</th>
+        <th>D3 Activation</th>
+      </tr>
+    </thead>`;
+}
+
+function d7Rows(promoList, cls = '', hideScope = 'default', moveTarget = '') {
+  return promoList.map(p => rowHtml(p, cls, hideScope, moveTarget)).join('');
 }
 
 function renderD7(promos, emptyLabel = 'No D7 Mature promos.', dateLabel = 'Start Date', hideScope = 'default', moveTarget = '') {
@@ -962,7 +1093,7 @@ function renderD7(promos, emptyLabel = 'No D7 Mature promos.', dateLabel = 'Star
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return `<p style="color:var(--muted);font-size:13px;padding:8px 0">${emptyLabel}</p>`;
 
-  const colCount = 12;
+  const colCount = 15;
   let rows = d7Rows(visible, '', hideScope, moveTarget);
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
@@ -972,49 +1103,14 @@ function renderD7(promos, emptyLabel = 'No D7 Mature promos.', dateLabel = 'Star
   return `
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>Angle</th>
-            <th>Metrics / Asset Code</th>
-            <th>${dateLabel}</th>
-            <th>USA CPI</th>
-            <th>PH CPI</th>
-            <th>Installs</th>
-            <th>Amount spent</th>
-            <th>CTR</th>
-            <th>CTI</th>
-            <th>Activation D0</th>
-            <th>Activation D3</th>
-            <th class="action-cell">Action</th>
-          </tr>
-        </thead>
+        ${tableHeaderHtml(dateLabel)}
         <tbody>${rows}</tbody>
       </table>
     </div>`;
 }
 
 function d3Rows(promoList, cls = '') {
-  let out = '';
-  const dataCls = cls ? 'hidden-data' : 'data-row';
-  for (const p of promoList) {
-    const d = p.data;
-    out += `
-      <tr class="${dataCls}">
-        <td class="left">${escHtml(p.angle)}</td>
-        <td>${escHtml(p.assetCode)}</td>
-        <td>${fmt(d[C.DATE])}</td>
-        <td>${fmt(d[C.TESTING_CPI])}</td>
-        <td>${fmt(d[C.CPI])}</td>
-        <td>${fmt(d[C.INSTALLS])}</td>
-        <td>${fmt(d[C.SPENT])}</td>
-        <td>${fmt(d[C.CTR])}</td>
-        <td>${fmt(d[C.CTI])}</td>
-        ${cellT(d[C.ACT_D0], 0.23)}
-        <td>${fmt(d[C.ACT_D3])}</td>
-        ${actionCell(p, 1)}
-      </tr>`;
-  }
-  return out;
+  return promoList.map(p => rowHtml(p, cls, 'default', '')).join('');
 }
 
 function renderD3(promos) {
@@ -1023,7 +1119,7 @@ function renderD3(promos) {
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D3 Mature promos.</p>';
 
-  const colCount = 12;
+  const colCount = 15;
   let rows = d3Rows(visible);
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
@@ -1033,57 +1129,15 @@ function renderD3(promos) {
   return `
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>Angle</th>
-            <th>Metrics / Asset Code</th>
-            <th>Start Date</th>
-            <th>USA CPI</th>
-            <th>PH CPI</th>
-            <th>Installs</th>
-            <th>Amount spent</th>
-            <th>CTR</th>
-            <th>CTI</th>
-            <th>Activation D0</th>
-            <th>Activation D3</th>
-            <th class="action-cell">Action</th>
-          </tr>
-        </thead>
+        ${tableHeaderHtml('Start Date')}
         <tbody>${rows}</tbody>
       </table>
     </div>`;
 }
 
 function d0Row(p, hidden = false) {
-  const d = p.data;
-  const isHid = getHidden().includes(p.assetCode);
-  const delBtn = adminMode && p._manual
-    ? `<button class="btn-sm hide-btn" onclick="deleteManualPromo('${esc(p._id)}','${p._bucket}')">Del</button>`
-    : '';
-  const adminCtrl = adminMode
-    ? `<div style="display:flex;gap:4px;margin-bottom:3px">
-        <button class="btn-sm ${isHid ? 'show-btn' : 'hide-btn'}" onclick="toggleHide('${esc(p.assetCode)}')">${isHid ? 'Show' : 'Hide'}</button>
-        ${delBtn}
-       </div>`
-    : '';
-  const cls = hidden ? 'hidden-data' : 'data-row';
-  return `
-    <tr class="${cls}">
-      <td class="left">${escHtml(p.angle)}</td>
-      <td>${escHtml(p.assetCode)}</td>
-      <td>${fmt(d[C.DATE])}</td>
-      <td>${fmt(d[C.TESTING_CPI])}</td>
-      <td>${fmt(d[C.CPI])}</td>
-      <td>${fmt(d[C.INSTALLS])}</td>
-      <td>${fmt(d[C.SPENT])}</td>
-      <td>${fmt(d[C.CTR])}</td>
-      <td>${fmt(d[C.CTI])}</td>
-      ${cellT(d[C.ACT_D0], 0.23)}
-      <td class="action-cell left">${adminCtrl}${adminMode
-        ? `<textarea class="action-textarea" oninput="saveActionInline('${esc(p.assetCode)}',this.value)">${escHtml(getAction(p.assetCode))}</textarea>`
-        : escHtml(getAction(p.assetCode)).replace(/\\n|\n/g,'<br>')
-      }</td>
-    </tr>`;
+  const cls = hidden ? 'hidden-data' : '';
+  return rowHtml(p, cls, 'default', '');
 }
 
 function renderD0(promos) {
@@ -1092,7 +1146,7 @@ function renderD0(promos) {
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D0 promos.</p>';
 
-  const colCount = 11;
+  const colCount = 15;
   let rows = visible.map(p => d0Row(p)).join('');
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
@@ -1102,21 +1156,7 @@ function renderD0(promos) {
   return `
     <div class="table-wrap">
       <table>
-        <thead>
-          <tr>
-            <th>Angle</th>
-            <th>Metrics / Asset Code</th>
-            <th>Start Date</th>
-            <th>USA CPI</th>
-            <th>PH CPI</th>
-            <th>Installs</th>
-            <th>Amount spent</th>
-            <th>CTR</th>
-            <th>CTI</th>
-            <th>Activation D0</th>
-            <th class="action-cell">Action</th>
-          </tr>
-        </thead>
+        ${tableHeaderHtml('Start Date')}
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -1405,15 +1445,27 @@ function seedDefaultActions() {
       <div class="form-section-label">Basics</div>
       <div class="form-row"><label>Angle</label><input type="text" id="pf-angle" required placeholder="e.g. FLBM Evaluator"/></div>
       <div class="form-row"><label>Asset Code</label><input type="text" id="pf-code" required placeholder="e.g. GU8250"/></div>
-      <div class="form-row"><label>Start Date (M/D/YYYY)</label><input type="text" id="pf-date" placeholder="4/17/2026"/></div>
-      <div class="form-row"><label>USA CPI ($)</label><input type="number" step="0.01" min="0" id="pf-testing-cpi" placeholder="5.34"/></div>
-      <div class="form-row"><label>PH CPI ($)</label><input type="number" step="0.01" min="0" id="pf-cpi" placeholder="22.0"/></div>
-      <div class="form-row"><label>Installs</label><input type="number" min="0" id="pf-installs" placeholder="100"/></div>
-      <div class="form-row"><label>Amount Spent ($)</label><input type="number" step="0.01" min="0" id="pf-spent" placeholder="2000"/></div>
-      <div class="form-row"><label>CTR (%)</label><input type="number" step="0.01" min="0" id="pf-ctr" placeholder="1.71"/></div>
-      <div class="form-row"><label>CTI (%)</label><input type="number" step="0.01" min="0" id="pf-cti" placeholder="15.93"/></div>
+      <div class="form-row"><label>Show</label><input type="text" id="pf-show" placeholder="e.g. First Legendary Beast Master"/></div>
+      <div class="form-row"><label>Owner</label><input type="text" id="pf-owner" placeholder="e.g. Berman"/></div>
+      <div class="form-row"><label>Upload Date (M/D/YYYY)</label><input type="text" id="pf-date" placeholder="6/9/2026"/></div>
+      <div class="form-row">
+        <label>Status</label>
+        <select id="pf-status" style="flex: 1; padding: 5px 8px; font-family: 'Space Grotesk', sans-serif; font-size: 13px; border: 1.5px solid #aaa; border-radius: 3px;">
+          <option value="Uploaded">Uploaded</option>
+          <option value="To be Uploaded">To be Uploaded</option>
+          <option value="Hold">Hold</option>
+        </select>
+      </div>
 
-      <div class="form-section-label">Metrics</div>
+      <div class="form-section-label">GA Code Metrics - USA</div>
+      <div class="form-row"><label>Cost per App Install (USD)</label><input type="number" step="0.01" min="0" id="pf-testing-cpi" placeholder="5.34"/></div>
+      <div class="form-row"><label>Completions/ Impressions (%)</label><input type="number" step="0.01" min="0" id="pf-ci" placeholder="2.43"/></div>
+      <div class="form-row"><label>Amount Spent (USD)</label><input type="number" step="0.01" min="0" id="pf-spent" placeholder="250.80"/></div>
+      <div class="form-row"><label>Video - 0% - 25% (%)</label><input type="number" step="0.01" min="0" id="pf-v25" placeholder="14.34"/></div>
+      <div class="form-row"><label>Outbound Clicks to Completion (%)</label><input type="number" step="0.01" min="0" id="pf-occ" placeholder="70.41"/></div>
+
+      <div class="form-section-label">CPS Results - PH</div>
+      <div class="form-row"><label>PH CPI</label><input type="text" id="pf-cpi" placeholder="Data not available"/></div>
       <div class="form-row" id="pf-row-actd0"><label>Activation D0 (%)</label><input type="number" step="0.1" id="pf-actd0" placeholder="18.5"/></div>
       <div class="form-row" id="pf-row-actd3"><label>Activation D3 (%)</label><input type="number" step="0.1" id="pf-actd3" placeholder="24.5"/></div>
 
