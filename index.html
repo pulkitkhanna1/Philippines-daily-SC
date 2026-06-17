@@ -537,7 +537,17 @@ function setHidden(v, scope = 'default') {
     s.hidden = [...v];
   } else {
     s.hiddenBySection = s.hiddenBySection || {};
-    s.hiddenBySection// Convert a stored manual promo → promo object used by rendering functions
+    s.hiddenBySection[scope] = [...v];
+  }
+  saveStore(s);
+}
+function setNewAds(v)       { const s = getStore(); s.newAds       = v; saveStore(s); }
+function setQueue(v)        { const s = getStore(); s.queue        = v; saveStore(s); }
+function setCrackedAssets(v) { const s = getStore(); s.crackedAssets = [...v]; saveStore(s); }
+function getManualPromos()  { const mp = getStore().manualPromos || {}; return { d7: mp.d7||[], d3: mp.d3||[], d0: mp.d0||[] }; }
+function setManualPromos(v) { const s = getStore(); s.manualPromos = v; saveStore(s); }
+
+// Convert a stored manual promo → promo object used by rendering functions
 function manualToPromo(m) {
   const pct = v => v !== '' && v != null ? v + '%' : '';
   const d = [];
@@ -602,7 +612,7 @@ function saveManualPromo(e) {
   setManualPromos(mp);
   closePromoModal();
   render();
-
+}
 
 function deleteManualPromo(id, bucket) {
   if (!requireAdmin()) return;
