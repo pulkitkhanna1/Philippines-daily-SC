@@ -1,0 +1,1418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bottom Funnel Report — Live</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <style>
+    :root {
+      --bg: #f2f4f7;
+      --line: #141a24;
+      --text: #1b2230;
+      --muted: #647086;
+      --head-yellow: #ead37c;
+      --cell: #ffffff;
+      --cell-bench: #efe9cb;
+      --cell-alt: #f8fafc;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Grotesk', sans-serif;
+    }
+
+    .page {
+      width: min(1880px, 99vw);
+      margin: 10px auto 40px;
+      padding: 0 8px;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(22px, 2.8vw, 34px);
+      letter-spacing: -0.02em;
+    }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .date { color: var(--muted); font-size: 13px; }
+
+    .btn {
+      padding: 5px 14px;
+      border: 2px solid var(--line);
+      background: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #f0f0f0; }
+    .btn.active { background: var(--head-yellow); }
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+    .btn-sm {
+      padding: 2px 8px;
+      font-size: 11px;
+      border: 1.5px solid #aaa;
+      background: #fff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .btn-sm:hover { background: #e8e8e8; }
+    .btn-sm.hide-btn { border-color: #e57373; color: #c62828; }
+    .btn-sm.show-btn { border-color: #66bb6a; color: #2e7d32; }
+    .btn-sm.edit-btn { border-color: #5c85d6; color: #1a3a7a; }
+    .action-textarea {
+      width: 100%;
+      min-height: 60px;
+      font-size: 12px;
+      font-family: inherit;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      padding: 4px 6px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .action-textarea:focus { outline: none; border-color: #5c85d6; }
+
+    .section-title {
+      margin: 16px 0 4px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #2a3445;
+    }
+
+    .table-wrap {
+      border: 2px solid var(--line);
+      background: #fff;
+      overflow-x: auto;
+    }
+
+    .extended-wrap table {
+      min-width: 1600px;
+    }
+
+    .extended-wrap th,
+    .extended-wrap td {
+      min-width: 95px;
+      max-width: 240px;
+      word-break: break-word;
+    }
+
+    .extended-wrap th:first-child,
+    .extended-wrap td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      min-width: 58px;
+    }
+
+    .extended-wrap th:first-child {
+      z-index: 3;
+    }
+
+    .extended-wrap td:first-child {
+      background: var(--cell-alt);
+      font-weight: 700;
+      color: var(--muted);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+    }
+
+    th, td {
+      border-right: 2px dotted var(--line);
+      border-bottom: 2px solid var(--line);
+      padding: 5px 6px;
+      text-align: center;
+      vertical-align: middle;
+      line-height: 1.2;
+    }
+
+    th:last-child, td:last-child { border-right: none; }
+
+    thead th {
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--head-yellow);
+    }
+    .sub th { font-size: 12px; }
+
+    tbody td {
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--cell);
+    }
+    tbody tr.bench-row td { background: var(--cell-bench); }
+    tbody tr.data-row td { background: var(--cell-alt); }
+
+    /* Hidden promos — greyed out at bottom in admin mode */
+    tr.hidden-bench td, tr.hidden-data td {
+      opacity: 0.38;
+      background: #e8e8e8 !important;
+    }
+    tr.hidden-bench td, tr.hidden-data td { color: #777; }
+    .hidden-divider td {
+      background: #ddd !important;
+      font-size: 11px;
+      font-weight: 700;
+      color: #999;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 3px 6px;
+      text-align: left;
+      border-bottom: 1px solid #bbb;
+    }
+
+    .left { text-align: left; }
+    td.action-cell, th.action-cell {
+      text-align: left;
+      min-width: 220px;
+      max-width: 320px;
+      word-break: break-word;
+      border-left: 2px dotted var(--line);
+    }
+    .hidden-badge {
+      display: inline-block;
+      background: #ffcccc;
+      color: #900;
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: 4px;
+    }
+
+    .meets { background: #dff1e2 !important; }
+    .miss  { background: #f8dfe3 !important; }
+
+    .status-bar {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      min-height: 18px;
+    }
+    .status-bar.err { color: #c62828; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #ccc;
+      border-top-color: #555;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .new-ads-section { margin-top: 16px; }
+    .new-ads-title { font-weight: 700; font-size: 18px; margin-bottom: 6px; color: #2a3445; }
+    .new-ads-list { font-size: 13px; line-height: 1.8; }
+    .new-ad-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .new-ad-del {
+      background: none;
+      border: none;
+      color: #c62828;
+      font-size: 15px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 2px;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .new-ad-del:hover { color: #900; }
+
+    /* Admin add-new-ad bar */
+    .admin-bar {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border: 2px solid var(--line);
+      background: #fff;
+      flex-wrap: wrap;
+    }
+    .admin-bar.visible { display: flex; }
+    .admin-bar label { font-size: 13px; font-weight: 600; }
+    .admin-bar input {
+      flex: 1;
+      min-width: 200px;
+      padding: 5px 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      border: 1.5px solid #aaa;
+      border-radius: 3px;
+    }
+
+    @media (max-width: 1080px) {
+      thead th { font-size: 12px; }
+      .sub th { font-size: 11px; }
+      tbody td { font-size: 12px; }
+    }
+
+    /* ── Add Promo Modal ──────────────────────────────────────────────────── */
+    #promo-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+    }
+    .modal-card {
+      position: relative;
+      background: #fff;
+      border: 2px solid var(--line);
+      border-radius: 6px;
+      padding: 24px;
+      width: min(500px, 95vw);
+      max-height: 85vh;
+      overflow-y: auto;
+      z-index: 1;
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .modal-header span { font-size: 17px; font-weight: 700; }
+    .modal-header button {
+      background: none;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      color: var(--muted);
+      line-height: 1;
+      padding: 0 4px;
+    }
+    .form-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 9px;
+      gap: 10px;
+    }
+    .form-row label {
+      width: 175px;
+      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .form-row input {
+      flex: 1;
+      padding: 5px 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      border: 1.5px solid #aaa;
+      border-radius: 3px;
+    }
+    #sync-indicator {
+      position: fixed;
+      bottom: 12px;
+      left: 14px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      opacity: 0.75;
+    }
+    #sync-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #aaa;
+      flex-shrink: 0;
+    }
+    #sync-dot.live  { background: #4caf50; }
+    #sync-dot.local { background: #aaa; }
+    #sync-dot.error { background: #e57373; }
+
+    .form-section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      margin: 14px 0 8px;
+      border-bottom: 1px solid #e0e0e0;
+      padding-bottom: 4px;
+    }
+
+  </style>
+</head>
+<body>
+
+<main class="page">
+  <div class="top">
+    <h1>Bottom Funnel Update</h1>
+    <div class="top-right">
+      <span class="date" id="today-date"></span>
+      <button class="btn" id="refresh-btn" onclick="loadData()">Refresh</button>
+      <button class="btn" id="download-png-btn" onclick="downloadPNG()">Download PNG</button>
+      <button class="btn" id="extended-metrics-btn" onclick="toggleExtendedMetrics()">show extended metrics</button>
+      <button class="btn" id="admin-btn" onclick="toggleAdmin()">Admin</button>
+    </div>
+  </div>
+
+  <div class="status-bar" id="status-bar"></div>
+
+  <div id="report-content"></div>
+
+  <!-- Admin: add new ad bar -->
+  <div class="admin-bar" id="admin-bar">
+    <label>New Ad:</label>
+    <input type="text" id="new-ad-input" placeholder="e.g. Flamborne Fists of Fire — Levels" onkeydown="if(event.key==='Enter')addNewAd()"/>
+    <button class="btn" onclick="addNewAd()">Add</button>
+    <span style="width:1px;background:#ccc;align-self:stretch;margin:0 4px"></span>
+    <label>Queue:</label>
+    <input type="text" id="queue-input" placeholder="e.g. GU8250 — FLBM Dragon Battle v2" onkeydown="if(event.key==='Enter')addQueueItem()"/>
+    <button class="btn" onclick="addQueueItem()">Add</button>
+    <button class="btn" onclick="toggleColMap()" style="margin-left:auto">Col Map</button>
+  </div>
+  <!-- Column map debug panel -->
+  <div id="col-map-panel" style="display:none;margin:10px 0;border:2px solid #141a24;background:#fff;overflow-x:auto;max-height:420px;overflow-y:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:'Space Grotesk',sans-serif">
+      <thead>
+        <tr style="background:#ead37c;position:sticky;top:0">
+          <th style="padding:4px 8px;border-right:1px solid #ccc;border-bottom:2px solid #141a24">Index</th>
+          <th style="padding:4px 8px;border-right:1px solid #ccc;border-bottom:2px solid #141a24">Header</th>
+          <th style="padding:4px 8px;border-right:1px solid #ccc;border-bottom:2px solid #141a24">Row 1 (Benchmark)</th>
+          <th style="padding:4px 8px;border-bottom:2px solid #141a24">Row 2 (Data)</th>
+        </tr>
+      </thead>
+      <tbody id="col-map-body"></tbody>
+    </table>
+  </div>
+</main>
+
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────────
+const SHEET_ID = '1N2gdkRi3uEaJneHAZatIVZ5YEBXpBEkC-Kbt0eut2Lg';
+const GID      = '1091050519';
+const ADMIN_PW = 'PASSWORD';
+const STORE_KEY = 'bfu_admin_v1';
+
+// Column indices — built dynamically from sheet header labels (see buildC below).
+// Fallback hardcoded values (by column letter) used if label matching fails.
+let C = {
+  METRIC:      0,
+  ANGLE:       2,
+  DATE:        37,
+  TESTING_CPI: 14,
+  CPI:         40,
+  INSTALLS:    36,
+  SPENT:       17,
+  CTR:         21,
+  CTI:         22,
+  ACT_D0:      41,
+  ACT_D3:      42,
+};
+
+// Column-letter → semantic key (used as fallback when labels are empty)
+const LETTER_TO_KEY = {
+  A: 'METRIC',
+  C: 'ANGLE',
+  AL: 'DATE',
+  O: 'TESTING_CPI',
+  AO: 'CPI',
+  AK: 'INSTALLS',
+  R: 'SPENT',
+  V: 'CTR',
+  W: 'CTI',
+  AP: 'ACT_D0',
+  AQ: 'ACT_D3'
+};
+
+// Label patterns — matched against GViz column labels (case-insensitive)
+const LABEL_RULES = [
+  { key: 'METRIC',      test: s => /metrics|asset.?code|ga\s*\/\s*gi\s*code/i.test(s) },
+  { key: 'ANGLE',       test: s => /\bangle\b/i.test(s) },
+  { key: 'DATE',        test: s => /start.?date|upload.?date/i.test(s) },
+  { key: 'TESTING_CPI', test: s => /testing.?cpi|cost\s*per\s*app\s*install/i.test(s) },
+  { key: 'CPI',         test: s => /cpi\s*on\s*cps|cps\s*results.*ph\s*cpi/i.test(s) },
+  { key: 'INSTALLS',    test: s => /^installs$|app\s*installs/i.test(s.trim()) },
+  { key: 'SPENT',       test: s => /amount.?spent/i.test(s) },
+  { key: 'CTR',         test: s => /ctr\s*\(link/i.test(s) },
+  { key: 'CTI',         test: s => /click\s*to\s*install/i.test(s) },
+  { key: 'ACT_D0',      test: s => /\bd0\b/i.test(s) },
+  { key: 'ACT_D3',      test: s => /activation.*\bd3\b|\bd3\b.*activation/i.test(s) },
+];
+
+function buildC(cols) {
+  const result = {};
+  // 1. Try matching by column label text
+  const assigned = new Set();
+  for (const rule of LABEL_RULES) {
+    for (let i = 0; i < cols.length; i++) {
+      if (assigned.has(i)) continue;
+      const label = (cols[i].label || '').trim();
+      if (label && rule.test(label)) {
+        result[rule.key] = i;
+        assigned.add(i);
+        break;
+      }
+    }
+  }
+  // 2. Fill gaps using column letter (c.id) for any keys not yet found
+  for (const [letter, key] of Object.entries(LETTER_TO_KEY)) {
+    if (result[key] == null) {
+      const idx = cols.findIndex(c => c.id === letter);
+      if (idx !== -1) result[key] = idx;
+    }
+  }
+  console.log('Column map:', result);
+  return Object.keys(result).length > 5 ? result : C; // safety: keep fallback if almost nothing matched
+}
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let adminMode  = false;
+let promoData  = { d7: [], d3: [], d0: [] };
+let extendedMetricsVisible = false;
+
+let _cache   = {};     // in-memory store; all getters read from here synchronously
+
+// ── ADMIN STORAGE ─────────────────────────────────────────────────────────────
+function getStore() { return _cache; }
+
+function saveStore(s) {
+  _cache = s;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch {}
+}
+function getActions()  { return getStore().actions  || {}; }
+function getHidden(scope = 'default') {
+  if (scope === 'default') return [...(getStore().hidden || [])];
+  return [...((getStore().hiddenBySection || {})[scope] || [])];
+}
+function getNewAds()   { return getStore().newAds   || []; }
+function getQueue()    { return getStore().queue     || []; }
+function getCrackedAssets() { return getStore().crackedAssets || []; }
+
+function setActions(v)      { const s = getStore(); s.actions      = v; saveStore(s); }
+function setHidden(v, scope = 'default') {
+  const s = getStore();
+  if (scope === 'default') {
+    s.hidden = [...v];
+  } else {
+    s.hiddenBySection = s.hiddenBySection || {};
+    s.hiddenBySection// Convert a stored manual promo → promo object used by rendering functions
+function manualToPromo(m) {
+  const pct = v => v !== '' && v != null ? v + '%' : '';
+  const d = [];
+  d[C.DATE]        = m.date        || '';
+  d[C.TESTING_CPI] = m.testingCpi  ? '$' + m.testingCpi  : '';
+  d[C.CPI]         = m.cpi         ? '$' + m.cpi         : '';
+  d[C.INSTALLS]    = m.installs    || '';
+  d[C.SPENT]       = m.spent       ? '$' + m.spent       : '';
+  d[C.CTR]         = pct(m.ctr);
+  d[C.CTI]         = pct(m.cti);
+  d[C.ACT_D0]      = pct(m.actD0);
+  d[C.ACT_D3]      = pct(m.actD3);
+  return { angle: m.angle, assetCode: m.assetCode, data: d, bench: [], _manual: true, _id: m.id, _bucket: m.bucket };
+}
+
+// ── MANUAL PROMO MODAL ────────────────────────────────────────────────────────
+let _modalBucket = 'd0';
+
+function openAddPromoModal(bucket) {
+  if (!requireAdmin()) return;
+  _modalBucket = bucket;
+  document.getElementById('modal-title').textContent =
+    'Add ' + (bucket === 'd7' ? 'D7 Mature' : bucket === 'd3' ? 'D3 Mature' : 'D0') + ' Promo';
+  document.getElementById('promo-form').reset();
+
+  const show = id => { const el = document.getElementById(id); if (el) el.style.display = ''; };
+  const hide  = id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
+
+  // Show actD3 only for d3 and d7 buckets
+  if (bucket === 'd3' || bucket === 'd7') {
+    show('pf-row-actd3');
+  } else {
+    hide('pf-row-actd3');
+  }
+
+  document.getElementById('promo-modal').style.display = '';
+}
+
+function closePromoModal() {
+  document.getElementById('promo-modal').style.display = 'none';
+}
+
+function saveManualPromo(e) {
+  e.preventDefault();
+  const g = id => document.getElementById(id).value.trim();
+  const mp = getManualPromos();
+  mp[_modalBucket].push({
+    id:          Date.now().toString(),
+    bucket:      _modalBucket,
+    angle:       g('pf-angle'),
+    assetCode:   g('pf-code'),
+    date:        g('pf-date'),
+    testingCpi:  g('pf-testing-cpi'),
+    cpi:         g('pf-cpi'),
+    installs:    g('pf-installs'),
+    spent:       g('pf-spent'),
+    ctr:         g('pf-ctr'),
+    cti:         g('pf-cti'),
+    actD0:       g('pf-actd0'),
+    actD3:       g('pf-actd3'),
+  });
+  setManualPromos(mp);
+  closePromoModal();
+  render();
+
+
+function deleteManualPromo(id, bucket) {
+  if (!requireAdmin()) return;
+  const mp = getManualPromos();
+  mp[bucket] = mp[bucket].filter(m => m.id !== id);
+  setManualPromos(mp);
+  render();
+}
+
+// ── NEW ADS EXPIRY ────────────────────────────────────────────────────────────
+// An ad expires at 11:00 AM IST on the day following creation
+function isExpired(ad) {
+  const IST_OFFSET = 5.5 * 60 * 60 * 1000;
+  const now = Date.now();
+  const createdIST = ad.ts + IST_OFFSET; // ms since epoch, shifted to IST
+  // midnight IST of creation day
+  const dayStartIST = Math.floor(createdIST / 86400000) * 86400000;
+  // 11 AM IST next day = dayStart + 24h + 11h, converted back to UTC
+  const expiryUTC = dayStartIST + (24 + 11) * 3600000 - IST_OFFSET;
+  return now >= expiryUTC;
+}
+
+function cleanExpiredAds() {
+  const fresh = getNewAds().filter(a => !isExpired(a));
+  setNewAds(fresh);
+  return fresh;
+}
+
+// ── JSONP LOADER ──────────────────────────────────────────────────────────────
+// Uses a <script> tag so it works from file:// (no CORS/fetch restrictions)
+function fetchGvizJSONP() {
+  return new Promise((resolve, reject) => {
+    const cb = '__gviz_' + Date.now();
+    const script = document.createElement('script');
+    script.onerror = () => {
+      delete window[cb];
+      document.head.removeChild(script);
+      reject(new Error('Script load failed — check network or sheet visibility'));
+    };
+    window[cb] = function(data) {
+      delete window[cb];
+      document.head.removeChild(script);
+      if (!data || !data.table) { reject(new Error('Empty response from Google Sheets')); return; }
+      resolve(gvizToRows(data));
+    };
+    // headers=2: treat first 2 sheet rows as column labels (picks up sub-headers like D3H3, D7H5, etc.)
+    script.src = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${cb}&gid=${GID}&headers=2`;
+    document.head.appendChild(script);
+  });
+}
+
+// Convert GViz table object → 2-D array of strings (same shape as CSV rows)
+let _debugRows = []; // stored for admin column-map panel
+
+function gvizToRows(data) {
+  const cols = data.table.cols;
+  // Build column index map from header labels (+ letter fallback)
+  C = buildC(cols);
+  const rows = [];
+  const headers = cols.map(c => c.label || c.id || '');
+  rows.push(headers);
+  for (const row of (data.table.rows || [])) {
+    const cells = (row.c || []).map(cell => {
+      if (!cell) return '';
+      if (cell.f != null) return String(cell.f);
+      if (cell.v != null) return String(cell.v);
+      return '';
+    });
+    rows.push(cells);
+  }
+  _debugRows = rows;
+  return rows;
+}
+
+// ── PROMO BUILDER ─────────────────────────────────────────────────────────────
+function buildPromos(rows) {
+  // rows[0] = header — skip
+  const promos = [];
+  let curAngle = '', curBench = null;
+
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const angle  = (r[C.ANGLE]  || '').trim();
+    const metric = (r[C.METRIC] || '').trim();
+
+    if (!metric || metric === '#N/A') continue;
+
+    // Update current angle if the row carries one
+    if (angle && angle !== '#N/A') curAngle = angle;
+
+    if (metric.toLowerCase() === 'benchmark') {
+      curBench = r;
+    } else {
+      promos.push({ angle: curAngle, bench: curBench, data: r, assetCode: metric });
+      curBench = null;
+    }
+  }
+  return promos;
+}
+
+function daysSinceStart(dateStr) {
+  if (!dateStr || dateStr === '#N/A' || !dateStr.trim()) return null;
+  let start = null;
+  const str = dateStr.trim();
+  if (str.startsWith('Date(')) {
+    const match = str.match(/Date\((\d+),\s*(\d+),\s*(\d+)\)/);
+    if (match) {
+      const y = parseInt(match[1], 10);
+      const m = parseInt(match[2], 10);
+      const d = parseInt(match[3], 10);
+      start = new Date(y, m, d);
+    }
+  } else {
+    const parts = str.split('/');
+    if (parts.length === 3) {
+      const [m, d, y] = parts.map(Number);
+      start = new Date(y, m - 1, d);
+    }
+  }
+  if (!start || isNaN(start.getTime())) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.floor((today - start) / 86400000);
+}
+
+function categorize(promos) {
+  const d7 = [], d3 = [], d0 = [];
+  for (const p of promos) {
+    const days = daysSinceStart(p.data[C.DATE]);
+    if (days !== null && days > 12) d7.push(p);
+    else if (days !== null && days >= 3) d3.push(p);
+    else d0.push(p);
+  }
+  const byAngle = (a, b) => a.angle.localeCompare(b.angle);
+  d7.sort(byAngle); d3.sort(byAngle); d0.sort(byAngle);
+  return { d7, d3, d0 };
+}
+
+// ── VALUE HELPERS ─────────────────────────────────────────────────────────────
+function parseVal(s) {
+  if (!s || s === '#N/A' || s.trim() === '') return null;
+  const clean = s.trim().replace(/,/g, '');
+  if (clean.endsWith('%')) {
+    const n = parseFloat(clean);
+    return isNaN(n) ? null : n / 100;
+  }
+  if (clean.startsWith('$')) {
+    const n = parseFloat(clean.slice(1));
+    return isNaN(n) ? null : n;
+  }
+  const n = parseFloat(clean);
+  return isNaN(n) ? null : n;
+}
+
+function fmt(s) {
+  if (!s || s === '#N/A' || s.trim() === '') return '—';
+  return s.trim();
+}
+
+function valueAt(row, key) {
+  const idx = C[key];
+  return idx == null ? '' : row[idx];
+}
+
+function cc(valS, benchS) {
+  // color class: compare actual vs benchmark
+  const a = parseVal(valS);
+  const b = parseVal(benchS);
+  if (a === null || b === null) return '';
+  return a >= b ? 'meets' : 'miss';
+}
+
+function cell(val, benchVal) {
+  const cls = cc(val, benchVal);
+  return `<td class="${cls}">${fmt(val)}</td>`;
+}
+
+// Fixed-threshold colour coding (e.g. Activation D0: >= 23% green, < 23% red)
+function cellT(val, threshold) {
+  const a = parseVal(val);
+  const cls = a === null ? '' : (a >= threshold ? 'meets' : 'miss');
+  return `<td class="${cls}">${fmt(val)}</td>`;
+}
+
+// ── ADMIN HELPERS ─────────────────────────────────────────────────────────────
+function getAction(assetCode) {
+  return getActions()[assetCode] || '';
+}
+const _actionTimers = {};
+function saveActionInline(assetCode, value) {
+  clearTimeout(_actionTimers[assetCode]);
+  _actionTimers[assetCode] = setTimeout(() => {
+    const actions = getActions();
+    actions[assetCode] = value;
+    setActions(actions);
+  }, 600);
+}
+function toggleHide(assetCode, scope = 'default') {
+  if (!requireAdmin()) return;
+  const hidden = getHidden(scope);
+  const idx = hidden.indexOf(assetCode);
+  if (idx === -1) hidden.push(assetCode);
+  else hidden.splice(idx, 1);
+  setHidden(hidden, scope);
+  render();
+}
+function moveToCracked(assetCode) {
+  if (!requireAdmin()) return;
+  const cracked = getCrackedAssets();
+  if (!cracked.includes(assetCode)) {
+    cracked.push(assetCode);
+    setCrackedAssets(cracked);
+  }
+  render();
+}
+function moveToD7(assetCode) {
+  if (!requireAdmin()) return;
+  setCrackedAssets(getCrackedAssets().filter(code => code !== assetCode));
+  render();
+}
+function addNewAd() {
+  if (!requireAdmin()) return;
+  const input = document.getElementById('new-ad-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const ads = getNewAds();
+  ads.push({ text, ts: Date.now() });
+  setNewAds(ads);
+  input.value = '';
+  render();
+}
+function deleteNewAd(idx) {
+  if (!requireAdmin()) return;
+  const ads = getNewAds();
+  ads.splice(idx, 1);
+  setNewAds(ads);
+  render();
+}
+function addQueueItem() {
+  if (!requireAdmin()) return;
+  const input = document.getElementById('queue-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const q = getQueue();
+  q.push({ text, ts: Date.now() });
+  setQueue(q);
+  input.value = '';
+  render();
+}
+function deleteQueueItem(idx) {
+  if (!requireAdmin()) return;
+  const q = getQueue();
+  q.splice(idx, 1);
+  setQueue(q);
+  render();
+}
+function requireAdmin() {
+  if (adminMode) return true;
+  const pw = prompt('Enter admin password:');
+  if (pw === ADMIN_PW) { adminMode = true; updateAdminUI(); return true; }
+  alert('Incorrect password.');
+  return false;
+}
+
+function toggleAdmin() {
+  if (!adminMode) {
+    const pw = prompt('Enter admin password:');
+    if (pw !== ADMIN_PW) { alert('Incorrect password.'); return; }
+    adminMode = true;
+  } else {
+    adminMode = false;
+  }
+  updateAdminUI();
+  render();
+}
+
+function updateAdminUI() {
+  const btn = document.getElementById('admin-btn');
+  const bar = document.getElementById('admin-bar');
+  if (adminMode) {
+    btn.textContent = 'Admin (on)';
+    btn.classList.add('active');
+    bar.classList.add('visible');
+  } else {
+    btn.textContent = 'Admin';
+    btn.classList.remove('active');
+    bar.classList.remove('visible');
+  }
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function actionCell(p, rowspan, hideScope = 'default', moveTarget = '') {
+  const assetCode = typeof p === 'string' ? p : p.assetCode;
+  const text = getAction(assetCode);
+  const rsAttr = rowspan > 1 ? `rowspan="${rowspan}"` : '';
+  const isHidden = getHidden(hideScope).includes(assetCode);
+  const hideBtn = adminMode
+    ? `<button class="btn-sm ${isHidden ? 'show-btn' : 'hide-btn'}" onclick="toggleHide('${esc(assetCode)}','${hideScope}')">${isHidden ? 'Show' : 'Hide'}</button>`
+    : '';
+  const moveBtn = adminMode && moveTarget === 'cracked'
+    ? `<button class="btn-sm edit-btn" onclick="moveToCracked('${esc(assetCode)}')">Move to Cracked</button>`
+    : adminMode && moveTarget === 'd7'
+      ? `<button class="btn-sm edit-btn" onclick="moveToD7('${esc(assetCode)}')">Put back to D7</button>`
+      : '';
+  const delBtn = adminMode && p._manual
+    ? `<button class="btn-sm hide-btn" onclick="deleteManualPromo('${esc(p._id)}','${p._bucket}')">Del</button>`
+    : '';
+  if (adminMode) {
+    const adminBtns = `<div style="margin-bottom:4px;display:flex;gap:4px;flex-wrap:wrap">${hideBtn}${moveBtn}${delBtn}</div>`;
+    return `<td class="action-cell left" ${rsAttr}>${adminBtns}<textarea class="action-textarea" oninput="saveActionInline('${esc(assetCode)}',this.value)">${escHtml(text)}</textarea></td>`;
+  }
+  const htmlText = escHtml(text).replace(/\\n|\n/g, '<br>');
+  return `<td class="action-cell left" ${rsAttr}>${htmlText}</td>`;
+}
+
+function esc(s) { return s.replace(/'/g, "\\'"); }
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function d7Rows(promoList, cls = '', hideScope = 'default', moveTarget = '') {
+  let out = '';
+  const dataCls  = cls ? 'hidden-data'  : 'data-row';
+  for (const p of promoList) {
+    const d = p.data;
+    out += `
+      <tr class="${dataCls}">
+        <td class="left">${escHtml(p.angle)}</td>
+        <td>${escHtml(p.assetCode)}</td>
+        <td>${fmt(d[C.DATE])}</td>
+        <td>${fmt(d[C.TESTING_CPI])}</td>
+        <td>${fmt(d[C.CPI])}</td>
+        <td>${fmt(d[C.INSTALLS])}</td>
+        <td>${fmt(d[C.SPENT])}</td>
+        <td>${fmt(d[C.CTR])}</td>
+        <td>${fmt(d[C.CTI])}</td>
+        ${cellT(d[C.ACT_D0], 0.23)}
+        <td>${fmt(d[C.ACT_D3])}</td>
+        ${actionCell(p, 1, hideScope, moveTarget)}
+      </tr>`;
+  }
+  return out;
+}
+
+function renderD7(promos, emptyLabel = 'No D7 Mature promos.', dateLabel = 'Start Date', hideScope = 'default', moveTarget = '') {
+  const hidden = getHidden(hideScope);
+  const visible = promos.filter(p => !hidden.includes(p.assetCode));
+  const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
+  if (!visible.length && !hiddenP.length) return `<p style="color:var(--muted);font-size:13px;padding:8px 0">${emptyLabel}</p>`;
+
+  const colCount = 12;
+  let rows = d7Rows(visible, '', hideScope, moveTarget);
+  if (hiddenP.length) {
+    rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
+    rows += d7Rows(hiddenP, 'hidden', hideScope, moveTarget);
+  }
+
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Angle</th>
+            <th>Metrics / Asset Code</th>
+            <th>${dateLabel}</th>
+            <th>USA CPI</th>
+            <th>PH CPI</th>
+            <th>Installs</th>
+            <th>Amount spent</th>
+            <th>CTR</th>
+            <th>CTI</th>
+            <th>Activation D0</th>
+            <th>Activation D3</th>
+            <th class="action-cell">Action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function d3Rows(promoList, cls = '') {
+  let out = '';
+  const dataCls = cls ? 'hidden-data' : 'data-row';
+  for (const p of promoList) {
+    const d = p.data;
+    out += `
+      <tr class="${dataCls}">
+        <td class="left">${escHtml(p.angle)}</td>
+        <td>${escHtml(p.assetCode)}</td>
+        <td>${fmt(d[C.DATE])}</td>
+        <td>${fmt(d[C.TESTING_CPI])}</td>
+        <td>${fmt(d[C.CPI])}</td>
+        <td>${fmt(d[C.INSTALLS])}</td>
+        <td>${fmt(d[C.SPENT])}</td>
+        <td>${fmt(d[C.CTR])}</td>
+        <td>${fmt(d[C.CTI])}</td>
+        ${cellT(d[C.ACT_D0], 0.23)}
+        <td>${fmt(d[C.ACT_D3])}</td>
+        ${actionCell(p, 1)}
+      </tr>`;
+  }
+  return out;
+}
+
+function renderD3(promos) {
+  const hidden = getHidden();
+  const visible = promos.filter(p => !hidden.includes(p.assetCode));
+  const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
+  if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D3 Mature promos.</p>';
+
+  const colCount = 12;
+  let rows = d3Rows(visible);
+  if (hiddenP.length) {
+    rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
+    rows += d3Rows(hiddenP, 'hidden');
+  }
+
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Angle</th>
+            <th>Metrics / Asset Code</th>
+            <th>Start Date</th>
+            <th>USA CPI</th>
+            <th>PH CPI</th>
+            <th>Installs</th>
+            <th>Amount spent</th>
+            <th>CTR</th>
+            <th>CTI</th>
+            <th>Activation D0</th>
+            <th>Activation D3</th>
+            <th class="action-cell">Action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function d0Row(p, hidden = false) {
+  const d = p.data;
+  const isHid = getHidden().includes(p.assetCode);
+  const delBtn = adminMode && p._manual
+    ? `<button class="btn-sm hide-btn" onclick="deleteManualPromo('${esc(p._id)}','${p._bucket}')">Del</button>`
+    : '';
+  const adminCtrl = adminMode
+    ? `<div style="display:flex;gap:4px;margin-bottom:3px">
+        <button class="btn-sm ${isHid ? 'show-btn' : 'hide-btn'}" onclick="toggleHide('${esc(p.assetCode)}')">${isHid ? 'Show' : 'Hide'}</button>
+        ${delBtn}
+       </div>`
+    : '';
+  const cls = hidden ? 'hidden-data' : 'data-row';
+  return `
+    <tr class="${cls}">
+      <td class="left">${escHtml(p.angle)}</td>
+      <td>${escHtml(p.assetCode)}</td>
+      <td>${fmt(d[C.DATE])}</td>
+      <td>${fmt(d[C.TESTING_CPI])}</td>
+      <td>${fmt(d[C.CPI])}</td>
+      <td>${fmt(d[C.INSTALLS])}</td>
+      <td>${fmt(d[C.SPENT])}</td>
+      <td>${fmt(d[C.CTR])}</td>
+      <td>${fmt(d[C.CTI])}</td>
+      ${cellT(d[C.ACT_D0], 0.23)}
+      <td class="action-cell left">${adminCtrl}${adminMode
+        ? `<textarea class="action-textarea" oninput="saveActionInline('${esc(p.assetCode)}',this.value)">${escHtml(getAction(p.assetCode))}</textarea>`
+        : escHtml(getAction(p.assetCode)).replace(/\\n|\n/g,'<br>')
+      }</td>
+    </tr>`;
+}
+
+function renderD0(promos) {
+  const hidden = getHidden();
+  const visible = promos.filter(p => !hidden.includes(p.assetCode));
+  const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
+  if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D0 promos.</p>';
+
+  const colCount = 11;
+  let rows = visible.map(p => d0Row(p)).join('');
+  if (hiddenP.length) {
+    rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
+    rows += hiddenP.map(p => d0Row(p, true)).join('');
+  }
+
+  return `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Angle</th>
+            <th>Metrics / Asset Code</th>
+            <th>Start Date</th>
+            <th>USA CPI</th>
+            <th>PH CPI</th>
+            <th>Installs</th>
+            <th>Amount spent</th>
+            <th>CTR</th>
+            <th>CTI</th>
+            <th>Activation D0</th>
+            <th class="action-cell">Action</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderNewAds() {
+  const ads = cleanExpiredAds();
+  if (!ads.length && !adminMode) return '';
+  let items = '';
+  for (let i = 0; i < ads.length; i++) {
+    const delBtn = adminMode
+      ? `<button class="new-ad-del" onclick="deleteNewAd(${i})" title="Remove">&#x2715;</button>`
+      : '';
+    items += `<div class="new-ad-item">${delBtn}<span>${escHtml(ads[i].text)}</span></div>`;
+  }
+  if (!items && adminMode) items = '<span style="color:var(--muted);font-size:12px">No entries — add one above.</span>';
+  return `
+    <div class="new-ads-section">
+      <div class="new-ads-title">New Ads uploaded today</div>
+      <div class="new-ads-list">${items}</div>
+    </div>`;
+}
+
+function renderQueue() {
+  const q = getQueue();
+  if (!q.length && !adminMode) return '';
+  let items = '';
+  for (let i = 0; i < q.length; i++) {
+    const delBtn = adminMode
+      ? `<button class="new-ad-del" onclick="deleteQueueItem(${i})" title="Remove">&#x2715;</button>`
+      : '';
+    items += `<div class="new-ad-item">${delBtn}<span>${escHtml(q[i].text)}</span></div>`;
+  }
+  if (!items && adminMode) items = '<span style="color:var(--muted);font-size:12px">No entries — add one above.</span>';
+  return `
+    <div class="new-ads-section">
+      <div class="new-ads-title">Queued for CPS upload</div>
+      <div class="new-ads-list">${items}</div>
+    </div>`;
+}
+
+function render() {
+  const content = document.getElementById('report-content');
+  const mp = getManualPromos();
+  const crackedAssetCodes = getCrackedAssets();
+  const d7Promos = [...promoData.d7, ...mp.d7.map(manualToPromo)];
+  const crackedPromos = d7Promos.filter(p => crackedAssetCodes.includes(p.assetCode));
+  const activeD7Promos = d7Promos.filter(p => !crackedAssetCodes.includes(p.assetCode));
+  const hasData = crackedPromos.length || activeD7Promos.length || promoData.d3.length || promoData.d0.length
+                || mp.d7.length || mp.d3.length || mp.d0.length;
+  if (!hasData && !extendedMetricsVisible) return;
+
+  const addBtn = bucket => adminMode
+    ? ` <button class="btn-sm edit-btn" style="vertical-align:middle;margin-left:8px" onclick="openAddPromoModal('${bucket}')">+ Add Promo</button>`
+    : '';
+
+  content.innerHTML = `
+    ${hasData ? `
+      <div class="section-title">Cracked Assets</div>
+      ${renderD7(crackedPromos, 'No Cracked Assets.', 'Upload Date', 'cracked', 'd7')}
+      <div class="section-title">D7 Mature Promos${addBtn('d7')}</div>
+      ${renderD7(activeD7Promos, 'No D7 Mature promos.', 'Start Date', 'd7', 'cracked')}
+      <div class="section-title">D3 Mature Promos${addBtn('d3')}</div>
+      ${renderD3([...promoData.d3, ...mp.d3.map(manualToPromo)])}
+      <div class="section-title">D0 Promos${addBtn('d0')}</div>
+      ${renderD0([...promoData.d0, ...mp.d0.map(manualToPromo)])}
+    ` : ''}
+    ${renderExtendedMetrics()}
+    ${renderNewAds()}
+    ${renderQueue()}
+  `;
+}
+
+function toggleExtendedMetrics() {
+  extendedMetricsVisible = !extendedMetricsVisible;
+  updateExtendedMetricsButton();
+  render();
+}
+
+function updateExtendedMetricsButton() {
+  const btn = document.getElementById('extended-metrics-btn');
+  if (!btn) return;
+  btn.textContent = extendedMetricsVisible ? 'hide extended metrics' : 'show extended metrics';
+  btn.classList.toggle('active', extendedMetricsVisible);
+}
+
+function renderExtendedMetrics() {
+  if (!extendedMetricsVisible) return '';
+  if (!_debugRows.length) {
+    return '<p style="color:var(--muted);font-size:13px;padding:8px 0">Load the sheet to show extended metrics.</p>';
+  }
+
+  const colIndexes = getNonEmptyColumnIndexes(_debugRows);
+  const header = _debugRows[0] || [];
+  const rows = _debugRows.slice(1).filter(row => colIndexes.some(i => fmt(row[i]) !== '—'));
+  const headCells = colIndexes
+    .map(i => `<th>${escHtml(header[i] || columnLabel(i))}</th>`)
+    .join('');
+  const bodyRows = rows.map((row, rowIdx) => `
+    <tr>
+      <td>${rowIdx + 1}</td>
+      ${colIndexes.map(i => `<td>${escHtml(fmt(row[i]))}</td>`).join('')}
+    </tr>`).join('');
+
+  return `
+    <div class="section-title">Extended Metrics</div>
+    <div class="table-wrap extended-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Row</th>
+            ${headCells}
+          </tr>
+        </thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+}
+
+function getNonEmptyColumnIndexes(rows) {
+  const maxLen = rows.reduce((max, row) => Math.max(max, row.length), 0);
+  const indexes = [];
+  for (let i = 0; i < maxLen; i++) {
+    if (rows.some(row => row[i] && String(row[i]).trim() && row[i] !== '#N/A')) indexes.push(i);
+  }
+  return indexes;
+}
+
+function columnLabel(index) {
+  let n = index + 1;
+  let label = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    label = String.fromCharCode(65 + rem) + label;
+    n = Math.floor((n - 1) / 26);
+  }
+  return label;
+}
+
+// ── DATA LOADING ──────────────────────────────────────────────────────────────
+function setStatus(msg, isErr = false) {
+  const el = document.getElementById('status-bar');
+  el.className = 'status-bar' + (isErr ? ' err' : '');
+  el.innerHTML = msg;
+}
+
+async function downloadPNG() {
+  const btn = document.getElementById('download-png-btn');
+  const target = document.querySelector('.page');
+  if (!target) return;
+  if (typeof html2canvas === 'undefined') {
+    setStatus('PNG download is still loading. Try again in a moment.', true);
+    return;
+  }
+
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Downloading...';
+  try {
+    const canvas = await html2canvas(target, {
+      backgroundColor: '#f2f4f7',
+      scale: Math.min(2, window.devicePixelRatio || 1),
+      useCORS: true,
+      windowWidth: target.scrollWidth,
+      windowHeight: target.scrollHeight,
+    });
+    const link = document.createElement('a');
+    const date = new Date().toISOString().slice(0, 10);
+    link.download = `bottom-funnel-update-${date}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    setStatus(`Downloaded PNG — ${new Date().toLocaleTimeString()}`);
+  } catch (e) {
+    setStatus(`Failed to download PNG: ${e.message}`, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function loadData() {
+  setStatus('<span class="spinner"></span> Fetching data from Google Sheets…');
+  document.getElementById('refresh-btn').disabled = true;
+  document.getElementById('download-png-btn').disabled = true;
+  document.getElementById('extended-metrics-btn').disabled = true;
+  try {
+    const rows = await fetchGvizJSONP();
+    if (rows.length < 2) throw new Error('No data rows returned.');
+    const promos = buildPromos(rows);
+    promoData = categorize(promos);
+    const total = promoData.d7.length + promoData.d3.length + promoData.d0.length;
+    setStatus(`Loaded ${total} promos — last updated ${new Date().toLocaleTimeString()}`);
+    updateExtendedMetricsButton();
+    render();
+  } catch (e) {
+    setStatus(`Failed to load data: ${e.message}. Make sure the Google Sheet is set to "Anyone with the link can view".`, true);
+  } finally {
+    document.getElementById('refresh-btn').disabled = false;
+    document.getElementById('download-png-btn').disabled = false;
+    document.getElementById('extended-metrics-btn').disabled = false;
+  }
+}
+
+// ── COLUMN MAP DEBUG ──────────────────────────────────────────────────────────
+// Currently mapped indices for highlighting in the panel
+const MAPPED = new Set(Object.values(C));
+
+function toggleColMap() {
+  const panel = document.getElementById('col-map-panel');
+  if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
+  const r0 = _debugRows[0] || [];
+  const r1 = _debugRows[1] || [];
+  const r2 = _debugRows[2] || [];
+  const len = Math.max(r0.length, r1.length, r2.length);
+  let html = '';
+  for (let i = 0; i < len; i++) {
+    const h  = r0[i] || '';
+    const v1 = r1[i] || '';
+    const v2 = r2[i] || '';
+    if (!h && !v1 && !v2) continue; // skip fully empty columns
+    const hi = MAPPED.has(i) ? 'background:#fff3b0' : '';
+    html += `<tr style="${hi}">
+      <td style="padding:3px 8px;border-right:1px solid #eee;border-bottom:1px solid #eee;font-weight:700;color:#555">${i}</td>
+      <td style="padding:3px 8px;border-right:1px solid #eee;border-bottom:1px solid #eee;color:#888">${escHtml(h)}</td>
+      <td style="padding:3px 8px;border-right:1px solid #eee;border-bottom:1px solid #eee">${escHtml(v1)}</td>
+      <td style="padding:3px 8px;border-bottom:1px solid #eee">${escHtml(v2)}</td>
+    </tr>`;
+  }
+  document.getElementById('col-map-body').innerHTML = html;
+  panel.style.display = 'block';
+}
+
+// ── DEFAULT ACTIONS ───────────────────────────────────────────────────────────
+// Updated 22 April 2026 — source of truth; always overwrites stored values.
+const DEFAULT_ACTIONS = {
+  'GU7851':   'Use as merge with Dragon Battle\nPicked up by Rahul on 23rd April',
+  'GU8131':   '* To be merged with Dragon Battle\n* Paused and started Spider Savior',
+  'GU7852':   'Passed to Scaling for ROAS',
+  'GU7859':   '* Use as Q1 merge on UK base\n* Merge to be uploaded on 23 April\n* FYI: Scaling TSS UK Base',
+  'GU8142':   'Early results are positive - Keep spending to 600 installs for next update on retention',
+  'APR26465': 'Activation has improved, waiting for cohort to mature for the downstream bottom funnel metrics',
+  'GU8120':   'Meeting Benchmarks - Scaled to 1.5K DRR on April 22',
+  'GU8199':   'To observe till 200 installs across both ads and evaluate on activation',
+  'GU8200':   'To observe till 200 installs across both ads and evaluate on activation',
+  'GU8143':   'D3 Retention results are positive - Keep spending to 500 installs for next update on retention',
+};
+
+function seedDefaultActions() {
+  const actions = getActions();
+  // Always write defaults so updates here propagate on next page load
+  let changed = false;
+  for (const [code, text] of Object.entries(DEFAULT_ACTIONS)) {
+    if (!(code in actions)) { actions[code] = text; changed = true; }
+  }
+  if (changed) setActions(actions);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+(async function init() {
+  // 1. Hydrate cache from localStorage instantly (no flicker)
+  try { _cache = JSON.parse(localStorage.getItem(STORE_KEY)) || {}; } catch { _cache = {}; }
+
+  // 2. Render
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric'
+  });
+  loadData();
+})();
+</script>
+
+<!-- Sync status indicator -->
+<div id="sync-indicator">
+  <span id="sync-dot" class="local"></span>
+  <span id="sync-label">Local Mode</span>
+</div>
+
+<!-- Add Promo Modal -->
+<div id="promo-modal" style="display:none">
+  <div class="modal-backdrop" onclick="closePromoModal()"></div>
+  <div class="modal-card">
+    <div class="modal-header">
+      <span id="modal-title">Add Promo</span>
+      <button onclick="closePromoModal()" title="Close">&times;</button>
+    </div>
+    <form id="promo-form" onsubmit="saveManualPromo(event)">
+      <div class="form-section-label">Basics</div>
+      <div class="form-row"><label>Angle</label><input type="text" id="pf-angle" required placeholder="e.g. FLBM Evaluator"/></div>
+      <div class="form-row"><label>Asset Code</label><input type="text" id="pf-code" required placeholder="e.g. GU8250"/></div>
+      <div class="form-row"><label>Start Date (M/D/YYYY)</label><input type="text" id="pf-date" placeholder="4/17/2026"/></div>
+      <div class="form-row"><label>USA CPI ($)</label><input type="number" step="0.01" min="0" id="pf-testing-cpi" placeholder="5.34"/></div>
+      <div class="form-row"><label>PH CPI ($)</label><input type="number" step="0.01" min="0" id="pf-cpi" placeholder="22.0"/></div>
+      <div class="form-row"><label>Installs</label><input type="number" min="0" id="pf-installs" placeholder="100"/></div>
+      <div class="form-row"><label>Amount Spent ($)</label><input type="number" step="0.01" min="0" id="pf-spent" placeholder="2000"/></div>
+      <div class="form-row"><label>CTR (%)</label><input type="number" step="0.01" min="0" id="pf-ctr" placeholder="1.71"/></div>
+      <div class="form-row"><label>CTI (%)</label><input type="number" step="0.01" min="0" id="pf-cti" placeholder="15.93"/></div>
+
+      <div class="form-section-label">Metrics</div>
+      <div class="form-row" id="pf-row-actd0"><label>Activation D0 (%)</label><input type="number" step="0.1" id="pf-actd0" placeholder="18.5"/></div>
+      <div class="form-row" id="pf-row-actd3"><label>Activation D3 (%)</label><input type="number" step="0.1" id="pf-actd3" placeholder="24.5"/></div>
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+        <button type="button" class="btn" onclick="closePromoModal()">Cancel</button>
+        <button type="submit" class="btn active">Add Promo</button>
+      </div>
+    </form>
+  </div>
+</div>
+</body>
+</html>

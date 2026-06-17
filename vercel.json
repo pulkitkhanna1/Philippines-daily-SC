@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/send-status-photo.js": {
+      "maxDuration": 60
+    }
+  }
+}
