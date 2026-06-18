@@ -605,7 +605,7 @@ function buildC(cols) {
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let adminMode  = false;
-let promoData  = { d7: [], d3: [], d0: [] };
+let promoData  = [];
 let extendedMetricsVisible = false;
 let usaExpanded = false;
 
@@ -753,19 +753,12 @@ let _modalBucket = 'd0';
 function openAddPromoModal(bucket) {
   if (!requireAdmin()) return;
   _modalBucket = bucket;
-  document.getElementById('modal-title').textContent =
-    'Add ' + (bucket === 'd7' ? 'D7 Mature' : bucket === 'd3' ? 'D3 Mature' : 'D0') + ' Promo';
+  document.getElementById('modal-title').textContent = 'Add Manual Promo';
   document.getElementById('promo-form').reset();
 
   const show = id => { const el = document.getElementById(id); if (el) el.style.display = ''; };
-  const hide  = id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; };
-
-  // Show actD3 only for d3 and d7 buckets
-  if (bucket === 'd3' || bucket === 'd7') {
-    show('pf-row-actd3');
-  } else {
-    hide('pf-row-actd3');
-  }
+  show('pf-row-actd0');
+  show('pf-row-actd3');
 
   document.getElementById('promo-modal').style.display = '';
 }
@@ -930,22 +923,7 @@ function daysSinceStart(dateStr) {
   return Math.floor((today - start) / 86400000);
 }
 
-function categorize(promos) {
-  const d0 = [];
-  for (const p of promos) {
-    const days = daysSinceStart(p.data[C.UPLOAD_DATE]);
-    if (days !== null && days > 12) {
-      // Ignore D7 promos
-    } else if (days !== null && days >= 3) {
-      // Ignore D3 promos
-    } else {
-      d0.push(p);
-    }
-  }
-  const byAngle = (a, b) => a.angle.localeCompare(b.angle);
-  d0.sort(byAngle);
-  return { d0 };
-}
+// Categorization function removed in favor of inline logic in render()
 
 // ── VALUE HELPERS ─────────────────────────────────────────────────────────────
 function parseVal(s) {
@@ -1282,80 +1260,23 @@ function tableHeaderHtml(dateLabel = 'Start Date') {
   }
 }
 
-function d7Rows(promoList, cls = '', hideScope = 'default', moveTarget = '') {
-  return promoList.map(p => rowHtml(p, cls, hideScope, moveTarget)).join('');
-}
-
-function renderD7(promos, emptyLabel = 'No D7 Mature promos.', dateLabel = 'Start Date', hideScope = 'default', moveTarget = '') {
+function renderPromoTable(promos, emptyLabel, dateLabel = 'Start Date', hideScope = 'default') {
   const hidden = getHidden(hideScope);
   const visible = promos.filter(p => !hidden.includes(p.assetCode));
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return `<p style="color:var(--muted);font-size:13px;padding:8px 0">${emptyLabel}</p>`;
 
   const colCount = usaExpanded ? 18 : 8;
-  let rows = d7Rows(visible, '', hideScope, moveTarget);
+  let rows = visible.map(p => rowHtml(p, '', hideScope, '')).join('');
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
-    rows += d7Rows(hiddenP, 'hidden', hideScope, moveTarget);
+    rows += hiddenP.map(p => rowHtml(p, 'hidden', hideScope, '')).join('');
   }
 
   return `
     <div class="table-wrap">
       <table>
         ${tableHeaderHtml(dateLabel)}
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-}
-
-function d3Rows(promoList, cls = '') {
-  return promoList.map(p => rowHtml(p, cls, 'default', '')).join('');
-}
-
-function renderD3(promos) {
-  const hidden = getHidden();
-  const visible = promos.filter(p => !hidden.includes(p.assetCode));
-  const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
-  if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D3 Mature promos.</p>';
-
-  const colCount = usaExpanded ? 18 : 8;
-  let rows = d3Rows(visible);
-  if (hiddenP.length) {
-    rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
-    rows += d3Rows(hiddenP, 'hidden');
-  }
-
-  return `
-    <div class="table-wrap">
-      <table>
-        ${tableHeaderHtml('Start Date')}
-        <tbody>${rows}</tbody>
-      </table>
-    </div>`;
-}
-
-function d0Row(p, hidden = false) {
-  const cls = hidden ? 'hidden-data' : '';
-  return rowHtml(p, cls, 'default', '');
-}
-
-function renderD0(promos) {
-  const hidden = getHidden();
-  const visible = promos.filter(p => !hidden.includes(p.assetCode));
-  const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
-  if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D0 promos.</p>';
-
-  const colCount = usaExpanded ? 18 : 8;
-  let rows = visible.map(p => d0Row(p)).join('');
-  if (hiddenP.length) {
-    rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
-    rows += hiddenP.map(p => d0Row(p, true)).join('');
-  }
-
-  return `
-    <div class="table-wrap">
-      <table>
-        ${tableHeaderHtml('Start Date')}
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -1400,7 +1321,34 @@ function renderQueue() {
 function render() {
   const content = document.getElementById('report-content');
   const mp = getManualPromos();
-  const hasData = (promoData.d0 && promoData.d0.length) || (mp.d0 && mp.d0.length);
+  const manual = [...(mp.d7 || []), ...(mp.d3 || []), ...(mp.d0 || [])].map(manualToPromo);
+  const allPromos = [...promoData, ...manual];
+
+  // Categorize
+  const uploaded = [];
+  const testingComplete = [];
+  const toBeUploaded = [];
+
+  for (const p of allPromos) {
+    const status = (p.data[C.STATUS] || '').trim().toLowerCase();
+    const d0InstallsVal = p.data[C.PH_D0_INSTALLS] || '';
+    const d0Installs = parseFloat(d0InstallsVal.replace(/,/g, ''));
+
+    if (!isNaN(d0Installs) && d0Installs > 150) {
+      testingComplete.push(p);
+    } else if (status === 'uploaded') {
+      uploaded.push(p);
+    } else if (status === 'to be uploaded' || status === 'hold') {
+      toBeUploaded.push(p);
+    }
+  }
+
+  const byAngle = (a, b) => a.angle.localeCompare(b.angle);
+  uploaded.sort(byAngle);
+  testingComplete.sort(byAngle);
+  toBeUploaded.sort(byAngle);
+
+  const hasData = uploaded.length || testingComplete.length || toBeUploaded.length;
   if (!hasData && !extendedMetricsVisible) return;
 
   const addBtn = bucket => adminMode
@@ -1409,8 +1357,14 @@ function render() {
 
   content.innerHTML = `
     ${hasData ? `
-      <div class="section-title">D0 Promos${addBtn('d0')}</div>
-      ${renderD0([...(promoData.d0 || []), ...(mp.d0 || []).map(manualToPromo)])}
+      <div class="section-title">Testing Complete</div>
+      ${renderPromoTable(testingComplete, 'No Testing Complete promos.', 'Start Date', 'testing')}
+      
+      <div class="section-title">Uploaded in Philippines${addBtn('d0')}</div>
+      ${renderPromoTable(uploaded, 'No Uploaded in Philippines promos.', 'Start Date', 'uploaded')}
+      
+      <div class="section-title">To be uploaded${addBtn('d0')}</div>
+      ${renderPromoTable(toBeUploaded, 'No To be uploaded promos.', 'Start Date', 'to_be_uploaded')}
     ` : ''}
     ${renderExtendedMetrics()}
     ${renderNewAds()}
@@ -1533,10 +1487,9 @@ async function loadData() {
   try {
     const rows = await fetchGvizJSONP();
     if (rows.length < 2) throw new Error('No data rows returned.');
-    const promos = buildPromos(rows);
-    promoData = categorize(promos);
-    const total = (promoData.d0 || []).length;
-    setStatus(`Loaded ${total} D0 promos — last updated ${new Date().toLocaleTimeString()}`);
+    promoData = buildPromos(rows);
+    const total = promoData.length;
+    setStatus(`Loaded ${total} promos — last updated ${new Date().toLocaleTimeString()}`);
     updateExtendedMetricsButton();
     render();
   } catch (e) {
