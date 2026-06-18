@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Bottom Funnel Report — Live</title>
+  <title>Philippines Q1+TN test — Live</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
@@ -450,7 +450,7 @@
 
 <main class="page">
   <div class="top">
-    <h1>Bottom Funnel Update</h1>
+    <h1>Philippines Q1+TN test</h1>
     <div class="top-right">
       <span class="date" id="today-date"></span>
       <button class="btn" id="refresh-btn" onclick="loadData()">Refresh</button>
@@ -501,11 +501,11 @@ const STORE_KEY = 'bfu_admin_v1';
 // Column indices — built dynamically from sheet header labels (see buildC below).
 // Fallback hardcoded values (by column letter) used if label matching fails.
 let C = {
-  METRIC:        0,
+  METRIC:         0,
   SHOW:          1,
   ANGLE:         2,
   OWNER:         3,
-  UPLOAD_DATE:   43,
+  UPLOAD_DATE:   45,
   STATUS:        10,
   USA_CPI:       14,
   USA_CI:        16,
@@ -519,8 +519,10 @@ let C = {
   USA_OCC:       24,
   USA_CTR_CTI:   35,
   PH_CPI:        40,
-  PH_D0:         41,
-  PH_D3:         42,
+  PH_D0_INSTALLS: 41,
+  PH_D0:         42,
+  PH_D3_INSTALLS: 43,
+  PH_D3:         44,
 };
 
 // Column-letter → semantic key (used as fallback when labels are empty)
@@ -529,7 +531,7 @@ const LETTER_TO_KEY = {
   B: 'SHOW',
   C: 'ANGLE',
   D: 'OWNER',
-  AR: 'UPLOAD_DATE',
+  AT: 'UPLOAD_DATE',
   K: 'STATUS',
   O: 'USA_CPI',
   Q: 'USA_CI',
@@ -543,8 +545,10 @@ const LETTER_TO_KEY = {
   Y: 'USA_OCC',
   AJ: 'USA_CTR_CTI',
   AO: 'PH_CPI',
-  AP: 'PH_D0',
-  AQ: 'PH_D3',
+  AP: 'PH_D0_INSTALLS',
+  AQ: 'PH_D0',
+  AR: 'PH_D3_INSTALLS',
+  AS: 'PH_D3',
 };
 
 // Label patterns — matched against GViz column labels (case-insensitive)
@@ -567,7 +571,9 @@ const LABEL_RULES = [
   { key: 'USA_OCC',       test: s => /outbound\s*clicks\s*to\s*completion/i.test(s) },
   { key: 'USA_CTR_CTI',   test: s => /ctr\*cti|ctr\s*\*\s*cti/i.test(s) },
   { key: 'PH_CPI',        test: s => /ph\s*cpi|cps\s*results\s*-\s*ph\s*cpi/i.test(s) },
+  { key: 'PH_D0_INSTALLS', test: s => /d0\s*installs|d0\s*install\s*count/i.test(s) },
   { key: 'PH_D0',         test: s => /d0\s*activation/i.test(s) },
+  { key: 'PH_D3_INSTALLS', test: s => /d3\s*installs|d3\s*install\s*count/i.test(s) },
   { key: 'PH_D3',         test: s => /d3\s*activation/i.test(s) },
 ];
 
@@ -734,7 +740,9 @@ function manualToPromo(m) {
   d[C.USA_OCC]     = pct(m.occ);
   d[C.USA_CTR_CTI] = pct(m.ctrCti);
   d[C.PH_CPI]      = m.cpi         ? '$' + m.cpi         : '';
+  d[C.PH_D0_INSTALLS] = m.actD0Installs || '';
   d[C.PH_D0]       = pct(m.actD0);
+  d[C.PH_D3_INSTALLS] = m.actD3Installs || '';
   d[C.PH_D3]       = pct(m.actD3);
   return { angle: m.angle, assetCode: m.assetCode, data: d, bench: [], _manual: true, _id: m.id, _bucket: m.bucket };
 }
@@ -923,16 +931,20 @@ function daysSinceStart(dateStr) {
 }
 
 function categorize(promos) {
-  const d7 = [], d3 = [], d0 = [];
+  const d0 = [];
   for (const p of promos) {
     const days = daysSinceStart(p.data[C.UPLOAD_DATE]);
-    if (days !== null && days > 12) d7.push(p);
-    else if (days !== null && days >= 3) d3.push(p);
-    else d0.push(p);
+    if (days !== null && days > 12) {
+      // Ignore D7 promos
+    } else if (days !== null && days >= 3) {
+      // Ignore D3 promos
+    } else {
+      d0.push(p);
+    }
   }
   const byAngle = (a, b) => a.angle.localeCompare(b.angle);
-  d7.sort(byAngle); d3.sort(byAngle); d0.sort(byAngle);
-  return { d7, d3, d0 };
+  d0.sort(byAngle);
+  return { d0 };
 }
 
 // ── VALUE HELPERS ─────────────────────────────────────────────────────────────
@@ -1388,12 +1400,7 @@ function renderQueue() {
 function render() {
   const content = document.getElementById('report-content');
   const mp = getManualPromos();
-  const crackedAssetCodes = getCrackedAssets();
-  const d7Promos = [...promoData.d7, ...mp.d7.map(manualToPromo)];
-  const crackedPromos = d7Promos.filter(p => crackedAssetCodes.includes(p.assetCode));
-  const activeD7Promos = d7Promos.filter(p => !crackedAssetCodes.includes(p.assetCode));
-  const hasData = crackedPromos.length || activeD7Promos.length || promoData.d3.length || promoData.d0.length
-                || mp.d7.length || mp.d3.length || mp.d0.length;
+  const hasData = (promoData.d0 && promoData.d0.length) || (mp.d0 && mp.d0.length);
   if (!hasData && !extendedMetricsVisible) return;
 
   const addBtn = bucket => adminMode
@@ -1402,14 +1409,8 @@ function render() {
 
   content.innerHTML = `
     ${hasData ? `
-      <div class="section-title">Cracked Assets</div>
-      ${renderD7(crackedPromos, 'No Cracked Assets.', 'Upload Date', 'cracked', 'd7')}
-      <div class="section-title">D7 Mature Promos${addBtn('d7')}</div>
-      ${renderD7(activeD7Promos, 'No D7 Mature promos.', 'Start Date', 'd7', 'cracked')}
-      <div class="section-title">D3 Mature Promos${addBtn('d3')}</div>
-      ${renderD3([...promoData.d3, ...mp.d3.map(manualToPromo)])}
       <div class="section-title">D0 Promos${addBtn('d0')}</div>
-      ${renderD0([...promoData.d0, ...mp.d0.map(manualToPromo)])}
+      ${renderD0([...(promoData.d0 || []), ...(mp.d0 || []).map(manualToPromo)])}
     ` : ''}
     ${renderExtendedMetrics()}
     ${renderNewAds()}
@@ -1512,7 +1513,7 @@ async function downloadPNG() {
     });
     const link = document.createElement('a');
     const date = new Date().toISOString().slice(0, 10);
-    link.download = `bottom-funnel-update-${date}.png`;
+    link.download = `philippines-q1-tn-test-${date}.png`;
     link.href = canvas.toDataURL('image/png');
     link.click();
     setStatus(`Downloaded PNG — ${new Date().toLocaleTimeString()}`);
@@ -1534,8 +1535,8 @@ async function loadData() {
     if (rows.length < 2) throw new Error('No data rows returned.');
     const promos = buildPromos(rows);
     promoData = categorize(promos);
-    const total = promoData.d7.length + promoData.d3.length + promoData.d0.length;
-    setStatus(`Loaded ${total} promos — last updated ${new Date().toLocaleTimeString()}`);
+    const total = (promoData.d0 || []).length;
+    setStatus(`Loaded ${total} D0 promos — last updated ${new Date().toLocaleTimeString()}`);
     updateExtendedMetricsButton();
     render();
   } catch (e) {

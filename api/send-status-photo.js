@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     const body = getBody(req);
     const channelId = body.channelId || process.env.SLACK_DEFAULT_CHANNEL_ID;
     const threadTs = body.threadTs;
-    const initialComment = body.message || 'Current bottom funnel status';
+    const initialComment = body.message || 'Current Philippines Q1+TN test status';
     const selector = body.selector || DEFAULT_SELECTOR;
     const pageUrl = resolvePageUrl(req, body);
 
@@ -154,7 +154,7 @@ async function uploadToSlack({ buffer, fileName, channelId, threadTs, initialCom
   const uploadTicket = await slackApi('files.getUploadURLExternal', {
     filename: fileName,
     length: buffer.length,
-    alt_txt: 'Current bottom funnel dashboard status'
+    alt_txt: 'Current Philippines Q1+TN test dashboard status'
   });
 
   const uploadResponse = await fetch(uploadTicket.upload_url, {
@@ -218,5 +218,5 @@ async function slackApi(method, payload) {
 function buildFileName() {
   const now = new Date();
   const iso = now.toISOString().replace(/[:]/g, '-').replace(/\..+$/, '');
-  return `bottom-funnel-status-${iso}.png`;
+  return `philippines-q1-tn-test-${iso}.png`;
 }
