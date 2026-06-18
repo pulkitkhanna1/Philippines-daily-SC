@@ -15,7 +15,7 @@
       --line: #141a24;
       --text: #1b2230;
       --muted: #647086;
-      --head-yellow: #ead37c;
+      --head-blue: #8ecbe6;
       --cell: #ffffff;
       --cell-bench: #efe9cb;
       --cell-alt: #f8fafc;
@@ -73,7 +73,7 @@
       transition: background 0.15s;
     }
     .btn:hover { background: #f0f0f0; }
-    .btn.active { background: var(--head-yellow); }
+    .btn.active { background: var(--head-blue); }
     .btn:disabled {
       cursor: not-allowed;
       opacity: 0.55;
@@ -99,7 +99,7 @@
       margin-left: 6px;
       padding: 0;
       background: var(--line);
-      color: var(--head-yellow);
+      color: var(--head-blue);
       border: none;
       border-radius: 4px;
       font-size: 11px;
@@ -193,7 +193,7 @@
     thead th {
       font-size: 14px;
       font-weight: 700;
-      background: var(--head-yellow);
+      background: var(--head-blue);
     }
     .sub th { font-size: 12px; }
 
@@ -455,7 +455,6 @@
       <span class="date" id="today-date"></span>
       <button class="btn" id="refresh-btn" onclick="loadData()">Refresh</button>
       <button class="btn" id="download-png-btn" onclick="downloadPNG()">Download PNG</button>
-      <button class="btn" id="extended-metrics-btn" onclick="toggleExtendedMetrics()">show extended metrics</button>
       <button class="btn" id="admin-btn" onclick="toggleAdmin()">Admin</button>
     </div>
   </div>
@@ -479,7 +478,7 @@
   <div id="col-map-panel" style="display:none;margin:10px 0;border:2px solid #141a24;background:#fff;overflow-x:auto;max-height:420px;overflow-y:auto">
     <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:'Space Grotesk',sans-serif">
       <thead>
-        <tr style="background:#ead37c;position:sticky;top:0">
+        <tr style="background:#8ecbe6;position:sticky;top:0">
           <th style="padding:4px 8px;border-right:1px solid #ccc;border-bottom:2px solid #141a24">Index</th>
           <th style="padding:4px 8px;border-right:1px solid #ccc;border-bottom:2px solid #141a24">Header</th>
           <th style="padding:4px 8px;border-right:1px solid #ccc;border-bottom:2px solid #141a24">Row 1 (Benchmark)</th>
@@ -507,6 +506,7 @@ let C = {
   OWNER:         3,
   UPLOAD_DATE:   45,
   STATUS:        10,
+  ACTION:        11,
   USA_CPI:       14,
   USA_CI:        16,
   USA_SPENT:     17,
@@ -533,6 +533,7 @@ const LETTER_TO_KEY = {
   D: 'OWNER',
   AT: 'UPLOAD_DATE',
   K: 'STATUS',
+  L: 'ACTION',
   O: 'USA_CPI',
   Q: 'USA_CI',
   R: 'USA_SPENT',
@@ -559,6 +560,7 @@ const LABEL_RULES = [
   { key: 'OWNER',         test: s => /^owner$/i.test(s.trim()) },
   { key: 'UPLOAD_DATE',   test: s => /philippines\s*upload|upload\s*date/i.test(s) },
   { key: 'STATUS',        test: s => /^status$/i.test(s.trim()) },
+  { key: 'ACTION',        test: s => /^action$/i.test(s.trim()) },
   { key: 'USA_CPI',       test: s => /usa\s*cost\s*per\s*app|cost\s*per\s*app\s*install\s*\(usd\)/i.test(s) },
   { key: 'USA_CI',        test: s => /completions\/\s*impressions/i.test(s) },
   { key: 'USA_SPENT',     test: s => /amount\s*spent\s*\(usd\)/i.test(s) },
@@ -728,6 +730,7 @@ function manualToPromo(m) {
   d[C.SHOW]        = m.show        || '';
   d[C.OWNER]       = m.owner       || '';
   d[C.STATUS]      = m.status      || 'Uploaded';
+  d[C.ACTION]      = getAction(m.assetCode) || '';
   d[C.USA_CPI]     = m.testingCpi  ? '$' + m.testingCpi  : '';
   d[C.USA_CI]      = pct(m.ci);
   d[C.USA_SPENT]   = m.spent       ? '$' + m.spent       : '';
@@ -1080,7 +1083,7 @@ function updateAdminUI() {
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function actionCell(p, rowspan, hideScope = 'default', moveTarget = '') {
   const assetCode = typeof p === 'string' ? p : p.assetCode;
-  const text = getAction(assetCode);
+  const text = (p && p.data) ? (p.data[C.ACTION] || '') : getAction(assetCode);
   const rsAttr = rowspan > 1 ? `rowspan="${rowspan}"` : '';
   const isHidden = getHidden(hideScope).includes(assetCode);
   const hideBtn = adminMode
@@ -1096,7 +1099,12 @@ function actionCell(p, rowspan, hideScope = 'default', moveTarget = '') {
     : '';
   if (adminMode) {
     const adminBtns = `<div style="margin-bottom:4px;display:flex;gap:4px;flex-wrap:wrap">${hideBtn}${moveBtn}${delBtn}</div>`;
-    return `<td class="action-cell left" ${rsAttr}>${adminBtns}<textarea class="action-textarea" oninput="saveActionInline('${esc(assetCode)}',this.value)">${escHtml(text)}</textarea></td>`;
+    if (p && p._manual) {
+      return `<td class="action-cell left" ${rsAttr}>${adminBtns}<textarea class="action-textarea" oninput="saveActionInline('${esc(assetCode)}',this.value)">${escHtml(text)}</textarea></td>`;
+    } else {
+      const htmlText = escHtml(text).replace(/\\n|\n/g, '<br>');
+      return `<td class="action-cell left" ${rsAttr}>${adminBtns}${htmlText}</td>`;
+    }
   }
   const htmlText = escHtml(text).replace(/\\n|\n/g, '<br>');
   return `<td class="action-cell left" ${rsAttr}>${htmlText}</td>`;
@@ -1192,14 +1200,11 @@ function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '') {
   
   html += `
       <td class="${phCpiClass}">${fmt(d[C.PH_CPI])}</td>
+      <td>${fmt(d[C.PH_D0_INSTALLS])}</td>
       <td class="${phD0Class}">${fmt(d[C.PH_D0])}</td>
+      <td>${fmt(d[C.PH_D3_INSTALLS])}</td>
       <td class="${phD3Class}">${fmt(d[C.PH_D3])}</td>
-      ${hideScope === 'default' ? 
-        `<td class="action-cell left">${adminCtrl}${adminMode
-          ? `<textarea class="action-textarea" oninput="saveActionInline('${esc(p.assetCode)}',this.value)">${escHtml(getAction(p.assetCode))}</textarea>`
-          : escHtml(getAction(p.assetCode)).replace(/\\n|\n/g,'<br>')
-        }</td>` : actionCell(p, 1, hideScope, moveTarget)
-      }
+      ${actionCell(p, 1, hideScope, moveTarget)}
     </tr>`;
     
   return html;
@@ -1223,7 +1228,9 @@ function tableHeaderHtml(dateLabel = 'Start Date') {
             USA CPI <button class="btn-toggle"><span class="toggle-icon">+</span></button>
           </th>
           <th>PH CPI</th>
+          <th>D0 Installs</th>
           <th>Activation D0</th>
+          <th>D3 Installs</th>
           <th>Activation D3</th>
           <th class="action-cell">Action</th>
         </tr>
@@ -1240,7 +1247,9 @@ function tableHeaderHtml(dateLabel = 'Start Date') {
           </th>
           <th colspan="10">USA Metrics</th>
           <th rowspan="2">PH CPI</th>
+          <th rowspan="2">D0 Installs</th>
           <th rowspan="2">Activation D0</th>
+          <th rowspan="2">D3 Installs</th>
           <th rowspan="2">Activation D3</th>
           <th rowspan="2" class="action-cell">Action</th>
         </tr>
@@ -1266,7 +1275,7 @@ function renderPromoTable(promos, emptyLabel, dateLabel = 'Start Date', hideScop
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return `<p style="color:var(--muted);font-size:13px;padding:8px 0">${emptyLabel}</p>`;
 
-  const colCount = usaExpanded ? 18 : 8;
+  const colCount = usaExpanded ? 20 : 10;
   let rows = visible.map(p => rowHtml(p, '', hideScope, '')).join('');
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
@@ -1343,10 +1352,10 @@ function render() {
     }
   }
 
-  const byAngle = (a, b) => a.angle.localeCompare(b.angle);
-  uploaded.sort(byAngle);
-  testingComplete.sort(byAngle);
-  toBeUploaded.sort(byAngle);
+  const byAssetCodeDesc = (a, b) => b.assetCode.localeCompare(a.assetCode, undefined, {numeric: true, sensitivity: 'base'});
+  uploaded.sort(byAssetCodeDesc);
+  testingComplete.sort(byAssetCodeDesc);
+  toBeUploaded.sort(byAssetCodeDesc);
 
   const hasData = uploaded.length || testingComplete.length || toBeUploaded.length;
   if (!hasData && !extendedMetricsVisible) return;
@@ -1483,7 +1492,6 @@ async function loadData() {
   setStatus('<span class="spinner"></span> Fetching data from Google Sheets…');
   document.getElementById('refresh-btn').disabled = true;
   document.getElementById('download-png-btn').disabled = true;
-  document.getElementById('extended-metrics-btn').disabled = true;
   try {
     const rows = await fetchGvizJSONP();
     if (rows.length < 2) throw new Error('No data rows returned.');
@@ -1497,7 +1505,6 @@ async function loadData() {
   } finally {
     document.getElementById('refresh-btn').disabled = false;
     document.getElementById('download-png-btn').disabled = false;
-    document.getElementById('extended-metrics-btn').disabled = false;
   }
 }
 
