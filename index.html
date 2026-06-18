@@ -90,6 +90,31 @@
       white-space: nowrap;
     }
     .btn-sm:hover { background: #e8e8e8; }
+    .btn-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      margin-left: 6px;
+      padding: 0;
+      background: var(--line);
+      color: var(--head-yellow);
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, background-color 0.15s;
+      vertical-align: middle;
+    }
+    .btn-toggle:hover {
+      background: #2a3445;
+      transform: scale(1.1);
+    }
+    .toggle-icon {
+      font-family: monospace;
+    }
     .btn-sm.hide-btn { border-color: #e57373; color: #c62828; }
     .btn-sm.show-btn { border-color: #66bb6a; color: #2e7d32; }
     .btn-sm.edit-btn { border-color: #5c85d6; color: #1a3a7a; }
@@ -476,20 +501,26 @@ const STORE_KEY = 'bfu_admin_v1';
 // Column indices — built dynamically from sheet header labels (see buildC below).
 // Fallback hardcoded values (by column letter) used if label matching fails.
 let C = {
-  METRIC:      0,
-  SHOW:        1,
-  ANGLE:       2,
-  OWNER:       3,
-  UPLOAD_DATE: 43,
-  STATUS:      10,
-  USA_CPI:     14,
-  USA_CI:      16,
-  USA_SPENT:   17,
-  USA_V25:     18,
-  USA_OCC:     24,
-  PH_CPI:      40,
-  PH_D0:       41,
-  PH_D3:       42,
+  METRIC:        0,
+  SHOW:          1,
+  ANGLE:         2,
+  OWNER:         3,
+  UPLOAD_DATE:   43,
+  STATUS:        10,
+  USA_CPI:       14,
+  USA_CI:        16,
+  USA_SPENT:     17,
+  USA_V25:       18,
+  USA_THRUPLAYS:  19,
+  USA_Q1_IMP:    20,
+  USA_CTR:       21,
+  USA_CTI:       22,
+  USA_CPM:       23,
+  USA_OCC:       24,
+  USA_CTR_CTI:   35,
+  PH_CPI:        40,
+  PH_D0:         41,
+  PH_D3:         42,
 };
 
 // Column-letter → semantic key (used as fallback when labels are empty)
@@ -504,7 +535,13 @@ const LETTER_TO_KEY = {
   Q: 'USA_CI',
   R: 'USA_SPENT',
   S: 'USA_V25',
+  T: 'USA_THRUPLAYS',
+  U: 'USA_Q1_IMP',
+  V: 'USA_CTR',
+  W: 'USA_CTI',
+  X: 'USA_CPM',
   Y: 'USA_OCC',
+  AJ: 'USA_CTR_CTI',
   AO: 'PH_CPI',
   AP: 'PH_D0',
   AQ: 'PH_D3',
@@ -512,20 +549,26 @@ const LETTER_TO_KEY = {
 
 // Label patterns — matched against GViz column labels (case-insensitive)
 const LABEL_RULES = [
-  { key: 'METRIC',      test: s => /ga\s*\/\s*gi\s*code/i.test(s) },
-  { key: 'SHOW',        test: s => /^show$/i.test(s.trim()) },
-  { key: 'ANGLE',       test: s => /^angle$/i.test(s.trim()) },
-  { key: 'OWNER',       test: s => /^owner$/i.test(s.trim()) },
-  { key: 'UPLOAD_DATE', test: s => /philippines\s*upload|upload\s*date/i.test(s) },
-  { key: 'STATUS',      test: s => /^status$/i.test(s.trim()) },
-  { key: 'USA_CPI',     test: s => /usa\s*cost\s*per\s*app|cost\s*per\s*app\s*install\s*\(usd\)/i.test(s) },
-  { key: 'USA_CI',      test: s => /completions\/\s*impressions/i.test(s) },
-  { key: 'USA_SPENT',   test: s => /amount\s*spent\s*\(usd\)/i.test(s) },
-  { key: 'USA_V25',     test: s => /video\s*-\s*0%\s*-\s*25%/i.test(s) },
-  { key: 'USA_OCC',     test: s => /outbound\s*clicks\s*to\s*completion/i.test(s) },
-  { key: 'PH_CPI',      test: s => /ph\s*cpi|cps\s*results\s*-\s*ph\s*cpi/i.test(s) },
-  { key: 'PH_D0',       test: s => /d0\s*activation/i.test(s) },
-  { key: 'PH_D3',       test: s => /d3\s*activation/i.test(s) },
+  { key: 'METRIC',        test: s => /ga\s*\/\s*gi\s*code/i.test(s) },
+  { key: 'SHOW',          test: s => /^show$/i.test(s.trim()) },
+  { key: 'ANGLE',         test: s => /^angle$/i.test(s.trim()) },
+  { key: 'OWNER',         test: s => /^owner$/i.test(s.trim()) },
+  { key: 'UPLOAD_DATE',   test: s => /philippines\s*upload|upload\s*date/i.test(s) },
+  { key: 'STATUS',        test: s => /^status$/i.test(s.trim()) },
+  { key: 'USA_CPI',       test: s => /usa\s*cost\s*per\s*app|cost\s*per\s*app\s*install\s*\(usd\)/i.test(s) },
+  { key: 'USA_CI',        test: s => /completions\/\s*impressions/i.test(s) },
+  { key: 'USA_SPENT',     test: s => /amount\s*spent\s*\(usd\)/i.test(s) },
+  { key: 'USA_V25',       test: s => /video\s*-\s*0%\s*-\s*25%/i.test(s) },
+  { key: 'USA_THRUPLAYS',  test: s => /thruplays/i.test(s) },
+  { key: 'USA_Q1_IMP',    test: s => /q1\/\s*impressions/i.test(s) },
+  { key: 'USA_CTR',       test: s => /ctr\s*\(link\s*click-through\s*rate\)/i.test(s) },
+  { key: 'USA_CTI',       test: s => /click\s*to\s*install/i.test(s) },
+  { key: 'USA_CPM',       test: s => /cpm\s*\(cost\s*per\s*1,000\s*impressions\)/i.test(s) },
+  { key: 'USA_OCC',       test: s => /outbound\s*clicks\s*to\s*completion/i.test(s) },
+  { key: 'USA_CTR_CTI',   test: s => /ctr\*cti|ctr\s*\*\s*cti/i.test(s) },
+  { key: 'PH_CPI',        test: s => /ph\s*cpi|cps\s*results\s*-\s*ph\s*cpi/i.test(s) },
+  { key: 'PH_D0',         test: s => /d0\s*activation/i.test(s) },
+  { key: 'PH_D3',         test: s => /d3\s*activation/i.test(s) },
 ];
 
 function buildC(cols) {
@@ -558,6 +601,7 @@ function buildC(cols) {
 let adminMode  = false;
 let promoData  = { d7: [], d3: [], d0: [] };
 let extendedMetricsVisible = false;
+let usaExpanded = false;
 
 let _cache   = {};     // in-memory store; all getters read from here synchronously
 
@@ -594,6 +638,82 @@ function setCrackedAssets(v) { const s = getStore(); s.crackedAssets = [...v]; s
 function getManualPromos()  { const mp = getStore().manualPromos || {}; return { d7: mp.d7||[], d3: mp.d3||[], d0: mp.d0||[] }; }
 function setManualPromos(v) { const s = getStore(); s.manualPromos = v; saveStore(s); }
 
+function getShowAcronym(showName) {
+  if (!showName) return '';
+  const str = showName.trim();
+  
+  // Explicit manual mapping for known shows
+  const manualMap = {
+    "first legendary beast master": "FLBM",
+    "weakest beast tamer": "WBT",
+    "my vampire system": "MVS",
+    "flameborne": "FLMB",
+    "leveling up my haunted house": "LUMHH",
+    "level up": "LU",
+    "spidermoth": "SM",
+    "spider savior": "SS",
+    "dragon's bloodline": "DB",
+    "reborn: level 1": "RL1",
+    "the bloodline: legacy": "TBL"
+  };
+  
+  const lower = str.toLowerCase();
+  if (manualMap[lower]) return manualMap[lower];
+  
+  // If there is an acronym in parentheses already (e.g. "My Vampire System (MVS)"), extract it
+  const parenMatch = str.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    const cand = parenMatch[1].trim();
+    if (cand.length >= 2 && cand.length <= 5) return cand.toUpperCase();
+  }
+  
+  // If already short uppercase string (2-5 chars), return it
+  if (/^[A-Z0-9]{2,5}$/.test(str)) return str;
+  
+  // Default acronym logic: split by space/punctuation and take first letter of each word
+  const words = str.split(/[^a-zA-Z0-9]+/);
+  const acronym = words
+    .filter(w => w.length > 0)
+    .map(w => w[0].toUpperCase())
+    .join('');
+  
+  // If it's a single word, return the first 3 letters uppercase or full word if short
+  if (words.length === 1 && str.length > 4) {
+    return str.slice(0, 3).toUpperCase();
+  }
+  
+  return acronym || str;
+}
+
+function getCellClass(p, colIndex, isLowerBetter = false) {
+  const val = p.data[colIndex];
+  const v = parseVal(val);
+  if (v === null) return '';
+  
+  // Check if we have a benchmark row
+  if (p.bench && p.bench[colIndex]) {
+    const b = parseVal(p.bench[colIndex]);
+    if (b !== null) {
+      const meets = isLowerBetter ? v <= b : v >= b;
+      return meets ? 'meets' : 'miss';
+    }
+  }
+  
+  // Default hardcoded fallbacks if no benchmark
+  if (colIndex === C.USA_CPI) {
+    if (v < 6.0) return 'meets';
+    if (v >= 10.0) return 'miss';
+    return 'warning';
+  }
+  if (colIndex === C.USA_CI) return v >= 0.018 ? 'meets' : 'miss';
+  if (colIndex === C.USA_SPENT) return v >= 200.0 ? 'meets' : 'miss';
+  if (colIndex === C.USA_V25) return v >= 0.10 ? 'meets' : 'miss';
+  if (colIndex === C.PH_D0) return v >= 0.23 ? 'meets' : 'miss';
+  if (colIndex === C.PH_D3) return v >= 0.25 ? 'meets' : 'miss';
+  
+  return '';
+}
+
 // Convert a stored manual promo → promo object used by rendering functions
 function manualToPromo(m) {
   const pct = v => v !== '' && v != null ? v + '%' : '';
@@ -606,7 +726,13 @@ function manualToPromo(m) {
   d[C.USA_CI]      = pct(m.ci);
   d[C.USA_SPENT]   = m.spent       ? '$' + m.spent       : '';
   d[C.USA_V25]     = pct(m.v25);
+  d[C.USA_THRUPLAYS] = m.thruplays || '';
+  d[C.USA_Q1_IMP]  = pct(m.q1Imp);
+  d[C.USA_CTR]     = pct(m.ctr);
+  d[C.USA_CTI]     = pct(m.cti);
+  d[C.USA_CPM]     = m.cpm         ? '$' + m.cpm         : '';
   d[C.USA_OCC]     = pct(m.occ);
+  d[C.USA_CTR_CTI] = pct(m.ctrCti);
   d[C.PH_CPI]      = m.cpi         ? '$' + m.cpi         : '';
   d[C.PH_D0]       = pct(m.actD0);
   d[C.PH_D3]       = pct(m.actD3);
@@ -657,7 +783,13 @@ function saveManualPromo(e) {
     ci:          g('pf-ci'),
     spent:       g('pf-spent'),
     v25:         g('pf-v25'),
+    thruplays:   g('pf-thruplays'),
+    q1Imp:       g('pf-q1imp'),
+    ctr:         g('pf-ctr'),
+    cti:         g('pf-cti'),
+    cpm:         g('pf-cpm'),
     occ:         g('pf-occ'),
+    ctrCti:      g('pf-ctrcti'),
     cpi:         g('pf-cpi'),
     actD0:       g('pf-actd0'),
     actD3:       g('pf-actd3'),
@@ -1003,20 +1135,36 @@ function cellTClass(val, threshold, inverse = false) {
 function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '') {
   const d = p.data;
   
-  const cpiClass = usaCpiClass(d[C.USA_CPI]);
-  const ciClass = cellTClass(d[C.USA_CI], 0.018);
-  const spentClass = cellTClass(d[C.USA_SPENT], 200.0);
-  const v25Class = cellTClass(d[C.USA_V25], 0.10);
+  const cpiClass = getCellClass(p, C.USA_CPI, true);
+  const ciClass = getCellClass(p, C.USA_CI);
+  const spentClass = getCellClass(p, C.USA_SPENT);
+  const v25Class = getCellClass(p, C.USA_V25);
+  const thruplaysClass = getCellClass(p, C.USA_THRUPLAYS);
+  const q1ImpClass = getCellClass(p, C.USA_Q1_IMP);
+  const ctrClass = getCellClass(p, C.USA_CTR);
+  const ctiClass = getCellClass(p, C.USA_CTI);
+  const cpmClass = getCellClass(p, C.USA_CPM, true);
+  const occClass = getCellClass(p, C.USA_OCC);
+  const ctrCtiClass = getCellClass(p, C.USA_CTR_CTI);
+  
+  const phCpiClass = getCellClass(p, C.PH_CPI, true);
+  const phD0Class = getCellClass(p, C.PH_D0);
+  const phD3Class = getCellClass(p, C.PH_D3);
   
   const statusStr = (d[C.STATUS] || '').trim();
-  let statusHtml = fmt(statusStr);
-  if (statusStr.toLowerCase() === 'uploaded') {
-    statusHtml = `<span class="status-uploaded">Uploaded</span>`;
-  } else if (statusStr.toLowerCase() === 'to be uploaded') {
-    statusHtml = `<span class="status-to-be">To be Uploaded</span>`;
-  } else if (statusStr.toLowerCase() === 'hold') {
-    statusHtml = `<span class="status-hold">Hold</span>`;
+  let statusBadge = '';
+  if (statusStr) {
+    if (statusStr.toLowerCase() === 'uploaded') {
+      statusBadge = ` <span class="status-uploaded" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">UP</span>`;
+    } else if (statusStr.toLowerCase() === 'to be uploaded') {
+      statusBadge = ` <span class="status-to-be" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">TO BE</span>`;
+    } else if (statusStr.toLowerCase() === 'hold') {
+      statusBadge = ` <span class="status-hold" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">HOLD</span>`;
+    }
   }
+  
+  const acronym = getShowAcronym(d[C.SHOW]);
+  const angleLabel = acronym ? `${acronym} ${p.angle}` : p.angle;
   
   const isHid = getHidden(hideScope).includes(p.assetCode);
   const delBtn = adminMode && p._manual
@@ -1030,22 +1178,32 @@ function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '') {
     : '';
   
   const dataCls = cls ? 'hidden-data' : 'data-row';
-  return `
+  
+  let html = `
     <tr class="${dataCls}">
-      <td>${escHtml(p.assetCode)}</td>
-      <td class="left">${escHtml(d[C.SHOW] || '')}</td>
-      <td class="left">${escHtml(p.angle)}</td>
-      <td>${escHtml(d[C.OWNER] || '')}</td>
+      <td class="left" style="font-weight: 600;">${escHtml(angleLabel)}</td>
+      <td>${escHtml(p.assetCode)}${statusBadge}</td>
       <td>${fmt(d[C.UPLOAD_DATE])}</td>
-      <td>${statusHtml}</td>
-      <td class="${cpiClass}">${fmt(d[C.USA_CPI])}</td>
+      <td class="${cpiClass}">${fmt(d[C.USA_CPI])}</td>`;
+      
+  if (usaExpanded) {
+    html += `
       <td class="${ciClass}">${fmt(d[C.USA_CI])}</td>
       <td class="${spentClass}">${fmt(d[C.USA_SPENT])}</td>
       <td class="${v25Class}">${fmt(d[C.USA_V25])}</td>
-      <td>${fmt(d[C.USA_OCC])}</td>
-      <td>${fmt(d[C.PH_CPI])}</td>
-      <td>${fmt(d[C.PH_D0])}</td>
-      <td>${fmt(d[C.PH_D3])}</td>
+      <td class="${thruplaysClass}">${fmt(d[C.USA_THRUPLAYS])}</td>
+      <td class="${q1ImpClass}">${fmt(d[C.USA_Q1_IMP])}</td>
+      <td class="${ctrClass}">${fmt(d[C.USA_CTR])}</td>
+      <td class="${ctiClass}">${fmt(d[C.USA_CTI])}</td>
+      <td class="${cpmClass}">${fmt(d[C.USA_CPM])}</td>
+      <td class="${occClass}">${fmt(d[C.USA_OCC])}</td>
+      <td class="${ctrCtiClass}">${fmt(d[C.USA_CTR_CTI])}</td>`;
+  }
+  
+  html += `
+      <td class="${phCpiClass}">${fmt(d[C.PH_CPI])}</td>
+      <td class="${phD0Class}">${fmt(d[C.PH_D0])}</td>
+      <td class="${phD3Class}">${fmt(d[C.PH_D3])}</td>
       ${hideScope === 'default' ? 
         `<td class="action-cell left">${adminCtrl}${adminMode
           ? `<textarea class="action-textarea" oninput="saveActionInline('${esc(p.assetCode)}',this.value)">${escHtml(getAction(p.assetCode))}</textarea>`
@@ -1053,34 +1211,63 @@ function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '') {
         }</td>` : actionCell(p, 1, hideScope, moveTarget)
       }
     </tr>`;
+    
+  return html;
+}
+
+function toggleUsaMetrics(e) {
+  if (e) e.preventDefault();
+  usaExpanded = !usaExpanded;
+  render();
 }
 
 function tableHeaderHtml(dateLabel = 'Start Date') {
-  return `
-    <thead>
-      <tr>
-        <th rowspan="2">GA / GI Code</th>
-        <th rowspan="2">Show</th>
-        <th rowspan="2">Angle</th>
-        <th rowspan="2">Owner</th>
-        <th rowspan="2">${dateLabel}</th>
-        <th rowspan="2">Status</th>
-        <th colspan="3">GA Code Metrics - USA</th>
-        <th colspan="2">Expand Metrics button</th>
-        <th colspan="3">CPS Results - PH</th>
-        <th rowspan="2" class="action-cell">Action</th>
-      </tr>
-      <tr class="sub">
-        <th>Cost per App Install (USD)</th>
-        <th>Completions/ Impressions</th>
-        <th>Amount spent (USD)</th>
-        <th>Video - 0% - 25%</th>
-        <th>Outbound Clicks to Completion</th>
-        <th>CPI</th>
-        <th>D0 Activation</th>
-        <th>D3 Activation</th>
-      </tr>
-    </thead>`;
+  if (!usaExpanded) {
+    return `
+      <thead>
+        <tr>
+          <th>Angle</th>
+          <th>Asset Code</th>
+          <th>${dateLabel}</th>
+          <th style="cursor:pointer" onclick="toggleUsaMetrics(event)">
+            USA CPI <button class="btn-toggle"><span class="toggle-icon">+</span></button>
+          </th>
+          <th>PH CPI</th>
+          <th>Activation D0</th>
+          <th>Activation D3</th>
+          <th class="action-cell">Action</th>
+        </tr>
+      </thead>`;
+  } else {
+    return `
+      <thead>
+        <tr>
+          <th rowspan="2">Angle</th>
+          <th rowspan="2">Asset Code</th>
+          <th rowspan="2">${dateLabel}</th>
+          <th rowspan="2" style="cursor:pointer" onclick="toggleUsaMetrics(event)">
+            USA CPI <button class="btn-toggle"><span class="toggle-icon">-</span></button>
+          </th>
+          <th colspan="10">USA Metrics</th>
+          <th rowspan="2">PH CPI</th>
+          <th rowspan="2">Activation D0</th>
+          <th rowspan="2">Activation D3</th>
+          <th rowspan="2" class="action-cell">Action</th>
+        </tr>
+        <tr class="sub">
+          <th>Completions/ Impressions</th>
+          <th>Amount spent (USD)</th>
+          <th>Video - 0% - 25%</th>
+          <th>ThruPlays</th>
+          <th>Q1/impressions</th>
+          <th>CTR</th>
+          <th>Click to Install</th>
+          <th>CPM</th>
+          <th>Outbound Clicks</th>
+          <th>CTR*CTI</th>
+        </tr>
+      </thead>`;
+  }
 }
 
 function d7Rows(promoList, cls = '', hideScope = 'default', moveTarget = '') {
@@ -1093,7 +1280,7 @@ function renderD7(promos, emptyLabel = 'No D7 Mature promos.', dateLabel = 'Star
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return `<p style="color:var(--muted);font-size:13px;padding:8px 0">${emptyLabel}</p>`;
 
-  const colCount = 15;
+  const colCount = usaExpanded ? 18 : 8;
   let rows = d7Rows(visible, '', hideScope, moveTarget);
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
@@ -1119,7 +1306,7 @@ function renderD3(promos) {
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D3 Mature promos.</p>';
 
-  const colCount = 15;
+  const colCount = usaExpanded ? 18 : 8;
   let rows = d3Rows(visible);
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
@@ -1146,7 +1333,7 @@ function renderD0(promos) {
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return '<p style="color:var(--muted);font-size:13px;padding:8px 0">No D0 promos.</p>';
 
-  const colCount = 15;
+  const colCount = usaExpanded ? 18 : 8;
   let rows = visible.map(p => d0Row(p)).join('');
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
@@ -1462,7 +1649,13 @@ function seedDefaultActions() {
       <div class="form-row"><label>Completions/ Impressions (%)</label><input type="number" step="0.01" min="0" id="pf-ci" placeholder="2.43"/></div>
       <div class="form-row"><label>Amount Spent (USD)</label><input type="number" step="0.01" min="0" id="pf-spent" placeholder="250.80"/></div>
       <div class="form-row"><label>Video - 0% - 25% (%)</label><input type="number" step="0.01" min="0" id="pf-v25" placeholder="14.34"/></div>
+      <div class="form-row"><label>ThruPlays</label><input type="number" min="0" id="pf-thruplays" placeholder="1250"/></div>
+      <div class="form-row"><label>Q1/impressions (%)</label><input type="number" step="0.01" min="0" id="pf-q1imp" placeholder="5.25"/></div>
+      <div class="form-row"><label>CTR (%)</label><input type="number" step="0.01" min="0" id="pf-ctr" placeholder="1.85"/></div>
+      <div class="form-row"><label>Click to Install (%)</label><input type="number" step="0.01" min="0" id="pf-cti" placeholder="35.40"/></div>
+      <div class="form-row"><label>CPM (USD)</label><input type="number" step="0.01" min="0" id="pf-cpm" placeholder="8.50"/></div>
       <div class="form-row"><label>Outbound Clicks to Completion (%)</label><input type="number" step="0.01" min="0" id="pf-occ" placeholder="70.41"/></div>
+      <div class="form-row"><label>CTR*CTI (%)</label><input type="number" step="0.01" min="0" id="pf-ctrcti" placeholder="0.65"/></div>
 
       <div class="form-section-label">CPS Results - PH</div>
       <div class="form-row"><label>PH CPI</label><input type="text" id="pf-cpi" placeholder="Data not available"/></div>
