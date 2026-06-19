@@ -205,6 +205,10 @@
     tbody tr.bench-row td { background: var(--cell-bench); }
     tbody tr.data-row td { background: var(--cell-alt); }
 
+    tr[class^="collapsed-row-"] {
+      display: none;
+    }
+
     /* Hidden promos — greyed out at bottom in admin mode */
     tr.hidden-bench td, tr.hidden-data td {
       opacity: 0.38;
@@ -1175,7 +1179,7 @@ function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '', showAction
        </div>`
     : '';
   
-  const dataCls = cls ? 'hidden-data' : 'data-row';
+  const dataCls = cls === 'hidden' ? 'hidden-data' : (cls ? cls : 'data-row');
   
   let html = `
     <tr class="${dataCls}">
@@ -1214,6 +1218,18 @@ function toggleUsaMetrics(e) {
   if (e) e.preventDefault();
   usaExpanded = !usaExpanded;
   render();
+}
+
+function toggleBucketRows(hideScope, count, btn) {
+  const rows = document.querySelectorAll(`.collapsed-row-${hideScope}`);
+  if (!rows.length) return;
+  const isCollapsed = rows[0].style.display === 'none' || rows[0].style.display === '';
+  
+  rows.forEach(r => {
+    r.style.display = isCollapsed ? 'table-row' : 'none';
+  });
+  
+  btn.textContent = isCollapsed ? `Hide ${count} promos` : `Show ${count} more`;
 }
 
 function tableHeaderHtml(dateLabel = 'Start Date', showAction = true) {
@@ -1277,7 +1293,23 @@ function renderPromoTable(promos, emptyLabel, dateLabel = 'Start Date', hideScop
 
   const baseColCount = usaExpanded ? 20 : 10;
   const colCount = showAction ? baseColCount : baseColCount - 1;
-  let rows = visible.map(p => rowHtml(p, '', hideScope, '', showAction)).join('');
+
+  let rows = '';
+  const visibleFirst10 = visible.slice(0, 10);
+  const visibleRest = visible.slice(10);
+
+  rows += visibleFirst10.map(p => rowHtml(p, '', hideScope, '', showAction)).join('');
+
+  if (visibleRest.length > 0) {
+    rows += visibleRest.map(p => rowHtml(p, `collapsed-row-${hideScope}`, hideScope, '', showAction)).join('');
+    rows += `
+      <tr class="toggle-row-${hideScope}">
+        <td colspan="${colCount}" style="text-align: center; padding: 8px; background: var(--cell-alt);">
+          <button class="btn-sm edit-btn" onclick="toggleBucketRows('${hideScope}', ${visibleRest.length}, this)">Show ${visibleRest.length} more</button>
+        </td>
+      </tr>`;
+  }
+
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
     rows += hiddenP.map(p => rowHtml(p, 'hidden', hideScope, '', showAction)).join('');
