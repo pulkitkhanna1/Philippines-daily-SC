@@ -1130,7 +1130,7 @@ function cellTClass(val, threshold, inverse = false) {
   return isMeets ? 'meets' : 'miss';
 }
 
-function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '') {
+function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '', showAction = true) {
   const d = p.data;
   
   const cpiClass = getCellClass(p, C.USA_CPI, true);
@@ -1204,7 +1204,7 @@ function rowHtml(p, cls = '', hideScope = 'default', moveTarget = '') {
       <td class="${phD0Class}">${fmt(d[C.PH_D0])}</td>
       <td>${fmt(d[C.PH_D3_INSTALLS])}</td>
       <td class="${phD3Class}">${fmt(d[C.PH_D3])}</td>
-      ${actionCell(p, 1, hideScope, moveTarget)}
+      ${showAction ? actionCell(p, 1, hideScope, moveTarget) : ''}
     </tr>`;
     
   return html;
@@ -1216,7 +1216,7 @@ function toggleUsaMetrics(e) {
   render();
 }
 
-function tableHeaderHtml(dateLabel = 'Start Date') {
+function tableHeaderHtml(dateLabel = 'Start Date', showAction = true) {
   if (!usaExpanded) {
     return `
       <thead>
@@ -1232,7 +1232,7 @@ function tableHeaderHtml(dateLabel = 'Start Date') {
           <th>Activation D0</th>
           <th>D3 Installs</th>
           <th>Activation D3</th>
-          <th class="action-cell">Action</th>
+          ${showAction ? '<th class="action-cell">Action</th>' : ''}
         </tr>
       </thead>`;
   } else {
@@ -1251,7 +1251,7 @@ function tableHeaderHtml(dateLabel = 'Start Date') {
           <th rowspan="2">Activation D0</th>
           <th rowspan="2">D3 Installs</th>
           <th rowspan="2">Activation D3</th>
-          <th rowspan="2" class="action-cell">Action</th>
+          ${showAction ? '<th rowspan="2" class="action-cell">Action</th>' : ''}
         </tr>
         <tr class="sub">
           <th>Completions/ Impressions</th>
@@ -1269,23 +1269,24 @@ function tableHeaderHtml(dateLabel = 'Start Date') {
   }
 }
 
-function renderPromoTable(promos, emptyLabel, dateLabel = 'Start Date', hideScope = 'default') {
+function renderPromoTable(promos, emptyLabel, dateLabel = 'Start Date', hideScope = 'default', showAction = true) {
   const hidden = getHidden(hideScope);
   const visible = promos.filter(p => !hidden.includes(p.assetCode));
   const hiddenP = adminMode ? promos.filter(p =>  hidden.includes(p.assetCode)) : [];
   if (!visible.length && !hiddenP.length) return `<p style="color:var(--muted);font-size:13px;padding:8px 0">${emptyLabel}</p>`;
 
-  const colCount = usaExpanded ? 20 : 10;
-  let rows = visible.map(p => rowHtml(p, '', hideScope, '')).join('');
+  const baseColCount = usaExpanded ? 20 : 10;
+  const colCount = showAction ? baseColCount : baseColCount - 1;
+  let rows = visible.map(p => rowHtml(p, '', hideScope, '', showAction)).join('');
   if (hiddenP.length) {
     rows += `<tr class="hidden-divider"><td colspan="${colCount}">Hidden</td></tr>`;
-    rows += hiddenP.map(p => rowHtml(p, 'hidden', hideScope, '')).join('');
+    rows += hiddenP.map(p => rowHtml(p, 'hidden', hideScope, '', showAction)).join('');
   }
 
   return `
     <div class="table-wrap">
       <table>
-        ${tableHeaderHtml(dateLabel)}
+        ${tableHeaderHtml(dateLabel, showAction)}
         <tbody>${rows}</tbody>
       </table>
     </div>`;
@@ -1353,8 +1354,42 @@ function render() {
   }
 
   const byAssetCodeDesc = (a, b) => b.assetCode.localeCompare(a.assetCode, undefined, {numeric: true, sensitivity: 'base'});
+
+  const getActionBucketOrder = (actionText) => {
+    if (!actionText) return 4;
+    const txt = actionText.trim().toLowerCase();
+    if (txt.startsWith('p0')) return 0;
+    if (txt.startsWith('p1')) return 1;
+    if (txt.includes('pushed to full genai') || txt.includes('pushed to full gen ai')) return 2;
+    if (txt.includes('reject')) return 3;
+    return 4;
+  };
+
+  const getD0ActivationVal = (p) => {
+    const val = parseVal(p.data[C.PH_D0]);
+    return val === null ? -1 : val;
+  };
+
+  const sortByTestingCompleteOrder = (a, b) => {
+    const actionA = a.data[C.ACTION] || '';
+    const actionB = b.data[C.ACTION] || '';
+    const bucketA = getActionBucketOrder(actionA);
+    const bucketB = getActionBucketOrder(actionB);
+
+    if (bucketA !== bucketB) {
+      return bucketA - bucketB;
+    }
+
+    const d0A = getD0ActivationVal(a);
+    const d0B = getD0ActivationVal(b);
+    if (d0A !== d0B) {
+      return d0B - d0A;
+    }
+    return b.assetCode.localeCompare(a.assetCode, undefined, {numeric: true, sensitivity: 'base'});
+  };
+
   uploaded.sort(byAssetCodeDesc);
-  testingComplete.sort(byAssetCodeDesc);
+  testingComplete.sort(sortByTestingCompleteOrder);
   toBeUploaded.sort(byAssetCodeDesc);
 
   const hasData = uploaded.length || testingComplete.length || toBeUploaded.length;
@@ -1367,13 +1402,13 @@ function render() {
   content.innerHTML = `
     ${hasData ? `
       <div class="section-title">Testing Complete</div>
-      ${renderPromoTable(testingComplete, 'No Testing Complete promos.', 'Start Date', 'testing')}
+      ${renderPromoTable(testingComplete, 'No Testing Complete promos.', 'Start Date', 'testing', true)}
       
       <div class="section-title">Uploaded in Philippines${addBtn('d0')}</div>
-      ${renderPromoTable(uploaded, 'No Uploaded in Philippines promos.', 'Start Date', 'uploaded')}
+      ${renderPromoTable(uploaded, 'No Uploaded in Philippines promos.', 'Start Date', 'uploaded', false)}
       
       <div class="section-title">To be uploaded${addBtn('d0')}</div>
-      ${renderPromoTable(toBeUploaded, 'No To be uploaded promos.', 'Start Date', 'to_be_uploaded')}
+      ${renderPromoTable(toBeUploaded, 'No To be uploaded promos.', 'Start Date', 'to_be_uploaded', false)}
     ` : ''}
     ${renderExtendedMetrics()}
     ${renderNewAds()}
