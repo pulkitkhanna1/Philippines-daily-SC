@@ -702,6 +702,11 @@ function getCellClass(p, colIndex, isLowerBetter = false) {
   const v = parseVal(val);
   if (v === null) return '';
   
+  // Hard override: any activation below 20% is colored light red (miss)
+  if ((colIndex === C.PH_D0 || colIndex === C.PH_D3) && v < 0.20) {
+    return 'miss';
+  }
+  
   // Check if we have a benchmark row
   if (p.bench && p.bench[colIndex]) {
     const b = parseVal(p.bench[colIndex]);
