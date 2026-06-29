@@ -448,6 +448,59 @@
       padding-bottom: 4px;
     }
 
+    /* Search Bar styling */
+    .search-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: clamp(160px, 15vw, 240px);
+    }
+    .search-input {
+      width: 100%;
+      padding: 5px 28px 5px 28px;
+      border: 2px solid var(--line);
+      background: #ffffff;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 4px;
+      color: var(--text);
+      transition: background 0.15s;
+    }
+    .search-input:focus {
+      outline: none;
+      background: #fafbfe;
+      border-color: #5c85d6;
+    }
+    .search-icon {
+      position: absolute;
+      left: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .search-clear {
+      position: absolute;
+      right: 8px;
+      border: none;
+      background: none;
+      color: var(--muted);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      font-size: 16px;
+      font-weight: 600;
+      line-height: 1;
+    }
+    .search-clear:hover {
+      color: var(--text);
+    }
+
   </style>
 </head>
 <body>
@@ -456,6 +509,11 @@
   <div class="top">
     <h1>Philippines Q1+TN test</h1>
     <div class="top-right">
+      <div class="search-container">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="global-search" class="search-input" placeholder="Search..." oninput="handleSearch(this.value)"/>
+        <button id="search-clear-btn" class="search-clear" onclick="clearSearch()">&times;</button>
+      </div>
       <span class="date" id="today-date"></span>
       <button class="btn" id="refresh-btn" onclick="loadData()">Refresh</button>
       <button class="btn" id="download-png-btn" onclick="downloadPNG()">Download PNG</button>
@@ -614,6 +672,24 @@ let adminMode  = false;
 let promoData  = [];
 let extendedMetricsVisible = false;
 let usaExpanded = false;
+let searchQuery = '';
+
+function handleSearch(val) {
+  searchQuery = val;
+  const clearBtn = document.getElementById('search-clear-btn');
+  if (clearBtn) {
+    clearBtn.style.display = val ? 'flex' : 'none';
+  }
+  render();
+}
+
+function clearSearch() {
+  const input = document.getElementById('global-search');
+  if (input) {
+    input.value = '';
+    handleSearch('');
+  }
+}
 
 let _cache   = {};     // in-memory store; all getters read from here synchronously
 
@@ -702,9 +778,9 @@ function getCellClass(p, colIndex, isLowerBetter = false) {
   const v = parseVal(val);
   if (v === null) return '';
   
-  // Hard override: any activation below 20% is colored light red (miss)
-  if ((colIndex === C.PH_D0 || colIndex === C.PH_D3) && v < 0.20) {
-    return 'miss';
+  // Activation D0/D3 threshold: >= 20% is green (meets), < 20% is red (miss)
+  if (colIndex === C.PH_D0 || colIndex === C.PH_D3) {
+    return v >= 0.20 ? 'meets' : 'miss';
   }
   
   // Check if we have a benchmark row
@@ -725,8 +801,6 @@ function getCellClass(p, colIndex, isLowerBetter = false) {
   if (colIndex === C.USA_CI) return v >= 0.018 ? 'meets' : 'miss';
   if (colIndex === C.USA_SPENT) return v >= 200.0 ? 'meets' : 'miss';
   if (colIndex === C.USA_V25) return v >= 0.10 ? 'meets' : 'miss';
-  if (colIndex === C.PH_D0) return v >= 0.23 ? 'meets' : 'miss';
-  if (colIndex === C.PH_D3) return v >= 0.25 ? 'meets' : 'miss';
   
   return '';
 }
@@ -1330,7 +1404,11 @@ function renderPromoTable(promos, emptyLabel, dateLabel = 'Start Date', hideScop
 }
 
 function renderNewAds() {
-  const ads = cleanExpiredAds();
+  let ads = cleanExpiredAds();
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase().trim();
+    ads = ads.filter(ad => (ad.text || '').toLowerCase().includes(q));
+  }
   if (!ads.length && !adminMode) return '';
   let items = '';
   for (let i = 0; i < ads.length; i++) {
@@ -1348,14 +1426,18 @@ function renderNewAds() {
 }
 
 function renderQueue() {
-  const q = getQueue();
-  if (!q.length && !adminMode) return '';
+  let qItems = getQueue();
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase().trim();
+    qItems = qItems.filter(item => (item.text || '').toLowerCase().includes(q));
+  }
+  if (!qItems.length && !adminMode) return '';
   let items = '';
-  for (let i = 0; i < q.length; i++) {
+  for (let i = 0; i < qItems.length; i++) {
     const delBtn = adminMode
       ? `<button class="new-ad-del" onclick="deleteQueueItem(${i})" title="Remove">&#x2715;</button>`
       : '';
-    items += `<div class="new-ad-item">${delBtn}<span>${escHtml(q[i].text)}</span></div>`;
+    items += `<div class="new-ad-item">${delBtn}<span>${escHtml(qItems[i].text)}</span></div>`;
   }
   if (!items && adminMode) items = '<span style="color:var(--muted);font-size:12px">No entries — add one above.</span>';
   return `
@@ -1369,7 +1451,20 @@ function render() {
   const content = document.getElementById('report-content');
   const mp = getManualPromos();
   const manual = [...(mp.d7 || []), ...(mp.d3 || []), ...(mp.d0 || [])].map(manualToPromo);
-  const allPromos = [...promoData, ...manual];
+  let allPromos = [...promoData, ...manual];
+
+  if (searchQuery) {
+    const q = searchQuery.toLowerCase().trim();
+    allPromos = allPromos.filter(p => {
+      if (!p) return false;
+      const angle = (p.angle || '').toLowerCase();
+      const assetCode = (p.assetCode || '').toLowerCase();
+      const show = (p.data && C.SHOW != null && p.data[C.SHOW] || '').toLowerCase();
+      const owner = (p.data && C.OWNER != null && p.data[C.OWNER] || '').toLowerCase();
+      const action = (p.data && C.ACTION != null && p.data[C.ACTION] || '').toLowerCase();
+      return angle.includes(q) || assetCode.includes(q) || show.includes(q) || owner.includes(q) || action.includes(q);
+    });
+  }
 
   // Categorize
   const uploaded = [];
